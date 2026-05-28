@@ -1,0 +1,101 @@
+name: cims
+description: Capital Institute of Para Medical Sciences — Management System
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+
+  # =========================
+  # STATE MANAGEMENT
+  # =========================
+  flutter_riverpod: ^3.3.1
+  riverpod_annotation: ^4.0.2
+
+  # =========================
+  # ROUTING
+  # =========================
+  go_router: ^17.2.3
+
+  # =========================
+  # NETWORK
+  # =========================
+  dio: ^5.4.3
+  retrofit: ^4.1.0+1
+  pretty_dio_logger: ^1.4.0
+
+  # =========================
+  # LOCAL STORAGE
+  # =========================
+  flutter_secure_storage: ^10.0.0
+  shared_preferences: ^2.2.3
+
+  # =========================
+  # UI / DESIGN
+  # =========================
+  google_fonts: ^8.1.0
+  flutter_svg: ^2.0.10+1
+  cached_network_image: ^3.3.1
+  shimmer: ^3.0.0
+  flutter_screenutil: ^5.9.3
+  gap: ^3.0.1
+
+  # =========================
+  # TABLES / CHARTS
+  # =========================
+  data_table_2: ^2.5.15
+  fl_chart: ^1.0.0
+
+  # =========================
+  # FORMS
+  # =========================
+  flutter_form_builder: ^10.2.0
+  form_builder_validators: ^11.2.0
+
+  # =========================
+  # UTILITIES
+  # =========================
+  intl: ^0.20.2
+  equatable: ^2.0.5
+  dartz: ^0.10.1
+  collection: ^1.18.0
+  geolocator: ^13.0.1
+
+  # =========================
+  # CODE GENERATION
+  # =========================
+  freezed_annotation: ^3.0.0
+  json_annotation: ^4.9.0
+
+  # =========================
+  # PDF
+  # =========================
+  pdf: ^3.10.8
+  printing: ^5.12.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^6.0.0
+
+  build_runner: ^2.4.15
+
+  riverpod_generator: ^4.0.3
+  freezed: ^3.2.5
+  json_serializable: ^6.8.0
+  retrofit_generator: ^10.2.5
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/
+    - assets/icons/
