@@ -32,17 +32,32 @@ final currentStaffProvider = FutureProvider.autoDispose<StaffApiModel?>((ref) as
   final user = await ref.watch(currentUserProvider.future);
   if (user == null || (user.role != 'teacher' && user.role != 'admin')) return null;
 
-  final staff = await ref.watch(staffListProvider(null).future);
+  final staff = await ref.watch(allStaffListProvider(null).future);
   
-  // Try to match by email or username prefix
+  // Try to match by email, username, or name parts
   final match = staff.where((s) {
     final staffEmail = s.email?.toLowerCase();
     final userEmail = user.username.contains('@') ? user.username.toLowerCase() : '${user.username.toLowerCase()}@cims.edu.pk';
-    final usernamePrefix = user.username.split('.').first.toLowerCase();
-    return staffEmail == userEmail || 
-           s.firstName.toLowerCase() == user.username.toLowerCase() ||
-           s.firstName.toLowerCase() == usernamePrefix ||
-           user.username.toLowerCase().startsWith(s.firstName.toLowerCase());
+    if (staffEmail == userEmail) return true;
+
+    final usernameLower = user.username.toLowerCase();
+    final fullNameLower = s.fullName.toLowerCase();
+    final firstNameLower = s.firstName.toLowerCase();
+    
+    if (fullNameLower == usernameLower || firstNameLower == usernameLower) return true;
+
+    // Split username by '.', '_', '-', '@' and check if name contains all parts
+    final parts = usernameLower.split(RegExp(r'[._\-\@]+')).where((p) => p.isNotEmpty).toList();
+    if (parts.isNotEmpty) {
+      final matchAllParts = parts.every((part) => 
+        fullNameLower.contains(part) || 
+        firstNameLower.contains(part) || 
+        (s.lastName?.toLowerCase().contains(part) ?? false)
+      );
+      if (matchAllParts) return true;
+    }
+
+    return false;
   }).firstOrNull;
 
   return match;

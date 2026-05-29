@@ -364,7 +364,7 @@ class _CreateInvoiceModalState extends ConsumerState<CreateInvoiceModal> {
                             const SizedBox(height: 8),
                             DropdownButtonFormField<String>(
                               value: _feeType,
-                              dropdownColor: AppColors.darkSurface,
+                              dropdownColor: Theme.of(context).brightness == Brightness.dark ? AppColors.darkSurface : AppColors.surface,
                               items: _feeTypes
                                   .map((e) => DropdownMenuItem(
                                       value: e, child: Text(e)))
@@ -463,7 +463,7 @@ class _CreateInvoiceModalState extends ConsumerState<CreateInvoiceModal> {
                                   decoration: const InputDecoration(
                                     hintText: 'Select term',
                                   ),
-                                  dropdownColor: AppColors.darkSurface,
+                                  dropdownColor: Theme.of(context).brightness == Brightness.dark ? AppColors.darkSurface : AppColors.surface,
                                   items: sessions
                                       .map((s) => DropdownMenuItem(
                                           value: s.id, child: Text(s.name)))

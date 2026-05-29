@@ -410,7 +410,7 @@ class _AddStaffModalState
         DropdownButtonFormField<String>(
           initialValue: value,
           decoration: const InputDecoration(),
-          dropdownColor: AppColors.darkSurface,
+          dropdownColor: Theme.of(context).brightness == Brightness.dark ? AppColors.darkSurface : AppColors.surface,
           isExpanded: true,
           items: items
               .map(
@@ -448,7 +448,7 @@ class _AddStaffModalState
         DropdownButtonFormField<int>(
           initialValue: initial,
           decoration: const InputDecoration(),
-          dropdownColor: AppColors.darkSurface,
+          dropdownColor: Theme.of(context).brightness == Brightness.dark ? AppColors.darkSurface : AppColors.surface,
           isExpanded: true,
           items: items
               .map(

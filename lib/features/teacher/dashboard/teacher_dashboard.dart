@@ -68,7 +68,7 @@ class TeacherDashboard extends ConsumerWidget {
                     children: [
                       _TodaySchedule(data: data),
                       const SizedBox(height: 20),
-                      _AttendanceTrendChart(),
+                      _AttendanceTrendChart(data: data.attendanceTrend),
                     ],
                   )
                 else
@@ -77,7 +77,7 @@ class TeacherDashboard extends ConsumerWidget {
                     children: [
                       Expanded(flex: 3, child: _TodaySchedule(data: data)),
                       const SizedBox(width: 20),
-                      Expanded(flex: 2, child: _AttendanceTrendChart()),
+                      Expanded(flex: 2, child: _AttendanceTrendChart(data: data.attendanceTrend)),
                     ],
                   ),
                 const SizedBox(height: 20),
@@ -498,11 +498,15 @@ class _TodaySchedule extends StatelessWidget {
                 tone = BadgeTone.purple;
               }
 
-              // Dynamic mock room and class
+              // Dynamic room and class label matching subjectId
               final roomName = s['room'] ?? 'Room 201';
-              final classLabel = data.assignedClassesList.isNotEmpty
-                  ? data.assignedClassesList[index % data.assignedClassesList.length]['className'].toString()
-                  : 'DPT 6th Sem';
+              final assignedClass = data.assignedClassesList.firstWhere(
+                (c) => c['id'] == s['subjectId'],
+                orElse: () => <String, dynamic>{},
+              );
+              final classLabel = assignedClass.isNotEmpty
+                  ? assignedClass['className'].toString()
+                  : 'Stage ${s['stage']}';
 
               return Container(
                 margin: const EdgeInsets.only(bottom: 12),
@@ -563,7 +567,9 @@ class _TodaySchedule extends StatelessWidget {
 // CLASS ATTENDANCE TREND CHART
 // =====================================================
 class _AttendanceTrendChart extends StatelessWidget {
-  const _AttendanceTrendChart();
+  final List<double> data;
+
+  const _AttendanceTrendChart({required this.data});
 
   @override
   Widget build(BuildContext context) {
@@ -594,8 +600,8 @@ class _AttendanceTrendChart extends StatelessWidget {
             width: double.infinity,
             child: CustomPaint(
               painter: AttendanceChartPainter(
-                data: [82.0, 85.0, 80.0, 88.0, 84.0, 89.0, 87.0],
-                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                data: data,
+                labels: const ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
               ),
             ),
           ),

@@ -414,7 +414,7 @@ class _EnrollStudentModalState
           decoration: InputDecoration(
             hintText: hintText,
           ),
-          dropdownColor: AppColors.darkSurface,
+          dropdownColor: Theme.of(context).brightness == Brightness.dark ? AppColors.darkSurface : AppColors.surface,
           items: items,
           onChanged: onChanged,
         ),
@@ -444,7 +444,7 @@ class _EnrollStudentModalState
           return DropdownButtonFormField<String>(
             initialValue: initial,
             decoration: const InputDecoration(),
-            dropdownColor: AppColors.darkSurface,
+            dropdownColor: Theme.of(context).brightness == Brightness.dark ? AppColors.darkSurface : AppColors.surface,
             items: opts
                 .map(
                   (e) => DropdownMenuItem(

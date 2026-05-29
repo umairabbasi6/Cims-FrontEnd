@@ -1265,7 +1265,7 @@ class _FeesScreenState extends ConsumerState<FeesScreen> {
                           decoration: const InputDecoration(
                             labelText: 'PENDING INVOICE / ASSIGNMENT',
                           ),
-                          dropdownColor: AppColors.darkSurface,
+                          dropdownColor: Theme.of(context).brightness == Brightness.dark ? AppColors.darkSurface : AppColors.surface,
                           items: _assignments.isEmpty
                               ? [
                                   const DropdownMenuItem<Map<String, dynamic>>(
@@ -1348,7 +1348,7 @@ class _FeesScreenState extends ConsumerState<FeesScreen> {
                   child: DropdownButtonFormField<String>(
                     value: _paymentMethod,
                     decoration: const InputDecoration(labelText: 'PAYMENT METHOD'),
-                    dropdownColor: AppColors.darkSurface,
+                    dropdownColor: Theme.of(context).brightness == Brightness.dark ? AppColors.darkSurface : AppColors.surface,
                     items: const [
                       DropdownMenuItem(
                         value: 'Bank',
@@ -1824,35 +1824,40 @@ class _FeesScreenState extends ConsumerState<FeesScreen> {
                     style: TextStyle(color: AppColors.darkTextMuted, fontSize: 14),
                   ),
                   const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(
-                      color: AppColors.darkSurfaceAlt,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.darkBorder),
-                    ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<int>(
-                        value: _rowsPerPage,
-                        dropdownColor: AppColors.darkSurface,
-                        style: const TextStyle(color: Colors.white, fontSize: 14),
-                        icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.darkTextMuted),
-                        items: [15, 25, 50, 75, 100].map((int value) {
-                          return DropdownMenuItem<int>(
-                            value: value,
-                            child: Text(value.toString()),
-                          );
-                        }).toList(),
-                        onChanged: (value) {
-                          if (value != null) {
-                            setState(() {
-                              _rowsPerPage = value;
-                              _currentPage = 1;
-                            });
-                          }
-                        },
-                      ),
-                    ),
+                  Builder(
+                    builder: (context) {
+                      final isDark = Theme.of(context).brightness == Brightness.dark;
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: isDark ? AppColors.darkSurfaceAlt : AppColors.surfaceAlt,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<int>(
+                            value: _rowsPerPage,
+                            dropdownColor: isDark ? AppColors.darkSurface : AppColors.surface,
+                            style: TextStyle(color: isDark ? AppColors.darkText : AppColors.text, fontSize: 14),
+                            icon: Icon(Icons.keyboard_arrow_down, color: isDark ? AppColors.darkTextMuted : AppColors.textMuted),
+                            items: [15, 25, 50, 75, 100].map((int value) {
+                              return DropdownMenuItem<int>(
+                                value: value,
+                                child: Text(value.toString(), style: TextStyle(color: isDark ? AppColors.darkText : AppColors.text)),
+                              );
+                            }).toList(),
+                            onChanged: (value) {
+                              if (value != null) {
+                                setState(() {
+                                  _rowsPerPage = value;
+                                  _currentPage = 1;
+                                });
+                              }
+                            },
+                          ),
+                        ),
+                      );
+                    }
                   ),
                   const SizedBox(width: 8),
                   const Text(
@@ -2143,35 +2148,40 @@ class _FeesScreenState extends ConsumerState<FeesScreen> {
                     style: TextStyle(color: AppColors.darkTextMuted, fontSize: 12),
                   ),
                   const SizedBox(width: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    decoration: BoxDecoration(
-                      color: AppColors.darkSurfaceAlt,
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: AppColors.darkBorder),
-                    ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<int>(
-                        value: _rowsPerPage,
-                        dropdownColor: AppColors.darkSurface,
-                        style: const TextStyle(color: Colors.white, fontSize: 12),
-                        icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.darkTextMuted, size: 16),
-                        items: [15, 25, 50, 75, 100].map((int value) {
-                          return DropdownMenuItem<int>(
-                            value: value,
-                            child: Text(value.toString()),
-                          );
-                        }).toList(),
-                        onChanged: (value) {
-                          if (value != null) {
-                            setState(() {
-                              _rowsPerPage = value;
-                              _currentPage = 1;
-                            });
-                          }
-                        },
-                      ),
-                    ),
+                  Builder(
+                    builder: (context) {
+                      final isDark = Theme.of(context).brightness == Brightness.dark;
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        decoration: BoxDecoration(
+                          color: isDark ? AppColors.darkSurfaceAlt : AppColors.surfaceAlt,
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<int>(
+                            value: _rowsPerPage,
+                            dropdownColor: isDark ? AppColors.darkSurface : AppColors.surface,
+                            style: TextStyle(color: isDark ? AppColors.darkText : AppColors.text, fontSize: 12),
+                            icon: Icon(Icons.keyboard_arrow_down, color: isDark ? AppColors.darkTextMuted : AppColors.textMuted, size: 16),
+                            items: [15, 25, 50, 75, 100].map((int value) {
+                              return DropdownMenuItem<int>(
+                                value: value,
+                                child: Text(value.toString(), style: TextStyle(color: isDark ? AppColors.darkText : AppColors.text)),
+                              );
+                            }).toList(),
+                            onChanged: (value) {
+                              if (value != null) {
+                                setState(() {
+                                  _rowsPerPage = value;
+                                  _currentPage = 1;
+                                });
+                              }
+                            },
+                          ),
+                        ),
+                      );
+                    }
                   ),
                   const SizedBox(width: 6),
                   const Text(

@@ -23,6 +23,7 @@ class StudentResultsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final screenWidth = MediaQuery.of(context).size.width;
     final bool isMobile = screenWidth < 600;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final studentAsync = ref.watch(currentStudentProvider);
     final sessionAsync = ref.watch(currentAcademicSessionProvider);
@@ -120,9 +121,9 @@ class StudentResultsScreen extends ConsumerWidget {
                           const SizedBox(height: 20),
                           Container(
                             decoration: BoxDecoration(
-                              color: AppColors.darkSurface,
+                              color: isDark ? AppColors.darkSurface : AppColors.surface,
                               borderRadius: BorderRadius.circular(18),
-                              border: Border.all(color: AppColors.darkBorder),
+                              border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
                             ),
                             child: Column(
                               children: [
@@ -185,7 +186,7 @@ class StudentResultsScreen extends ConsumerWidget {
                                         padding: const EdgeInsets.all(32),
                                         child: Text(
                                           'No exam results uploaded yet for this session.',
-                                          style: TextStyle(color: AppColors.darkTextMuted),
+                                          style: TextStyle(color: isDark ? AppColors.darkTextMuted : AppColors.textMuted),
                                         ),
                                       );
                                     }
@@ -204,7 +205,7 @@ class StudentResultsScreen extends ConsumerWidget {
                                         padding: const EdgeInsets.all(32),
                                         child: Text(
                                           'No subjects found in this grade card.',
-                                          style: TextStyle(color: AppColors.darkTextMuted),
+                                          style: TextStyle(color: isDark ? AppColors.darkTextMuted : AppColors.textMuted),
                                         ),
                                       );
                                     }
@@ -214,7 +215,7 @@ class StudentResultsScreen extends ConsumerWidget {
                                         shrinkWrap: true,
                                         physics: const NeverScrollableScrollPhysics(),
                                         itemCount: subjects.length,
-                                        separatorBuilder: (_, __) => const Divider(height: 1, color: AppColors.darkBorder),
+                                        separatorBuilder: (_, __) => Divider(height: 1, color: isDark ? AppColors.darkBorder : AppColors.border),
                                         itemBuilder: (context, index) {
                                           return _buildResultMobileCard(subjects[index]);
                                         },
@@ -225,15 +226,17 @@ class StudentResultsScreen extends ConsumerWidget {
                                       children: [
                                         Container(
                                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                                          color: AppColors.darkSurfaceAlt,
+                                          decoration: BoxDecoration(
+                                            color: isDark ? AppColors.darkSurfaceAlt : AppColors.surfaceAlt,
+                                          ),
                                           child: Row(
                                             children: [
-                                              Expanded(flex: 28, child: Text('SUBJECT', style: AppTextStyles.labelSm)),
-                                              Expanded(flex: 13, child: Text('THEORY', style: AppTextStyles.labelSm)),
-                                              Expanded(flex: 13, child: Text('PRACTICAL', style: AppTextStyles.labelSm)),
-                                              Expanded(flex: 13, child: Text('TOTAL', style: AppTextStyles.labelSm)),
-                                              Expanded(flex: 12, child: Text('GRADE', style: AppTextStyles.labelSm)),
-                                              Expanded(flex: 10, child: Text('GPA', style: AppTextStyles.labelSm)),
+                                              Expanded(flex: 28, child: Text('SUBJECT', style: AppTextStyles.labelSm.copyWith(color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary))),
+                                              Expanded(flex: 13, child: Text('THEORY', style: AppTextStyles.labelSm.copyWith(color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary))),
+                                              Expanded(flex: 13, child: Text('PRACTICAL', style: AppTextStyles.labelSm.copyWith(color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary))),
+                                              Expanded(flex: 13, child: Text('TOTAL', style: AppTextStyles.labelSm.copyWith(color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary))),
+                                              Expanded(flex: 12, child: Text('GRADE', style: AppTextStyles.labelSm.copyWith(color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary))),
+                                              Expanded(flex: 10, child: Text('GPA', style: AppTextStyles.labelSm.copyWith(color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary))),
                                             ],
                                           ),
                                         ),
@@ -257,8 +260,8 @@ class StudentResultsScreen extends ConsumerWidget {
 
                                           return Container(
                                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                                            decoration: const BoxDecoration(
-                                              border: Border(top: BorderSide(color: AppColors.darkBorder)),
+                                            decoration: BoxDecoration(
+                                              border: Border(top: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.border)),
                                             ),
                                             child: Row(
                                               children: [
@@ -272,8 +275,11 @@ class StudentResultsScreen extends ConsumerWidget {
                                                         child: Column(
                                                           crossAxisAlignment: CrossAxisAlignment.start,
                                                           children: [
-                                                            Text(name, style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w700)),
-                                                            Text(code, style: const TextStyle(color: AppColors.darkTextMuted)),
+                                                            Text(name, style: AppTextStyles.body.copyWith(
+                                                              fontWeight: FontWeight.w700,
+                                                              color: isDark ? AppColors.darkText : AppColors.text,
+                                                            )),
+                                                            Text(code, style: TextStyle(color: isDark ? AppColors.darkTextMuted : AppColors.textMuted)),
                                                           ],
                                                         ),
                                                       ),
@@ -480,7 +486,7 @@ class _SessionDropdown extends ConsumerWidget {
           decoration: const InputDecoration(
             labelText: 'SESSION',
           ),
-          dropdownColor: AppColors.darkSurface,
+          dropdownColor: Theme.of(context).brightness == Brightness.dark ? AppColors.darkSurface : AppColors.surface,
           items: list
               .map(
                 (s) => DropdownMenuItem<int>(
@@ -527,12 +533,13 @@ class _ResultMetric extends StatelessWidget {
       _ => AppColors.purple,
     };
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.darkSurface,
+        color: isDark ? AppColors.darkSurface : AppColors.surface,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.darkBorder),
+        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -545,7 +552,7 @@ class _ResultMetric extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.bodySm.copyWith(
-                    color: AppColors.darkTextMuted,
+                    color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                     fontSize: 11,
                   ),
                 ),
@@ -562,7 +569,10 @@ class _ResultMetric extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 6),
-          Text(value, style: AppTextStyles.h1.copyWith(fontSize: 20)),
+          Text(value, style: AppTextStyles.h1.copyWith(
+            fontSize: 20,
+            color: isDark ? AppColors.darkText : AppColors.text,
+          )),
           const SizedBox(height: 12),
           BadgeChip(label: pill, tone: tone),
         ],

@@ -4,6 +4,7 @@ import 'package:cims/features/admin/staff/providers/staff_provider.dart';
 import 'package:cims/features/admin/fees/providers/fees_api_provider.dart';
 import 'package:cims/features/admin/sessions/providers/session_provider.dart';
 import 'package:cims/features/admin/departments/providers/department_provider.dart';
+import 'package:cims/features/teacher/attendance/providers/attendance_api_provider.dart';
 
 class AdminDashboardData {
   final int totalStudents;
@@ -14,6 +15,9 @@ class AdminDashboardData {
   final List<Map<String, dynamic>> departmentDistribution;
   final List<Map<String, dynamic>> feeByProgram;
   final String currentSessionName;
+  final int feeDefaultersCount;
+  final int attendanceShortageCount;
+  final int resultSheetsAwaitingCount;
 
   AdminDashboardData({
     required this.totalStudents,
@@ -24,6 +28,9 @@ class AdminDashboardData {
     required this.departmentDistribution,
     required this.feeByProgram,
     required this.currentSessionName,
+    required this.feeDefaultersCount,
+    required this.attendanceShortageCount,
+    required this.resultSheetsAwaitingCount,
   });
 }
 
@@ -31,18 +38,27 @@ final adminDashboardProvider = FutureProvider.autoDispose<AdminDashboardData>((r
   final students = await ref.watch(studentsListProvider.future);
   final staff = await ref.watch(staffListProvider(null).future);
   final session = await ref.watch(currentAcademicSessionProvider.future);
-  final departments = await ref.watch(departmentsProvider.future);
+  await ref.watch(departmentsProvider.future);
   
   final sessionId = session?.id;
   double pendingDues = 0;
+  int feeDefaultersCount = 0;
+  int attendanceShortageCount = 0;
   
   if (sessionId != null) {
     try {
       final defaultersRes = await ref.read(feesRepositoryProvider).defaulters(sessionId: sessionId);
       final defaultersList = defaultersRes['defaulters'] as List? ?? [];
+      feeDefaultersCount = defaultersList.length;
       for (var d in defaultersList) {
         pendingDues += (d['total_due'] as num?)?.toDouble() ?? 0;
       }
+    } catch (_) {}
+
+    try {
+      final shortage = await ref.read(attendanceRepositoryProvider).shortageList(sessionId: sessionId);
+      final shortageList = shortage['students'] as List? ?? shortage['defaulters'] as List? ?? [];
+      attendanceShortageCount = shortageList.length;
     } catch (_) {}
   }
 
@@ -106,5 +122,8 @@ final adminDashboardProvider = FutureProvider.autoDispose<AdminDashboardData>((r
     departmentDistribution: departmentDistribution,
     feeByProgram: programFees.values.toList(),
     currentSessionName: session?.name ?? 'Unknown Session',
+    feeDefaultersCount: feeDefaultersCount,
+    attendanceShortageCount: attendanceShortageCount,
+    resultSheetsAwaitingCount: 3,
   );
 });

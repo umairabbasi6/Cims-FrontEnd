@@ -591,7 +591,7 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
             return DropdownButtonFormField<int>(
               value: _selectedSubjectId,
               decoration: const InputDecoration(labelText: 'SUBJECT'),
-              dropdownColor: AppColors.darkSurface,
+              dropdownColor: Theme.of(context).brightness == Brightness.dark ? AppColors.darkSurface : AppColors.surface,
               items: items,
               onChanged: (v) {
                 if (v == null) return;
@@ -619,7 +619,7 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
             return DropdownButtonFormField<int>(
               value: _selectedSessionId,
               decoration: const InputDecoration(labelText: 'SESSION'),
-              dropdownColor: AppColors.darkSurface,
+              dropdownColor: Theme.of(context).brightness == Brightness.dark ? AppColors.darkSurface : AppColors.surface,
               items: items,
               onChanged: (v) {
                 if (v == null) return;

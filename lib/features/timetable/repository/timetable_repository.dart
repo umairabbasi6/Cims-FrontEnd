@@ -60,7 +60,7 @@ class TimetableRepository {
 
   Future<Uint8List> getTimetablePdf({
     required int sessionId,
-    required int stage,
+    int? stage,
     int? programId,
     int? staffId,
   }) {

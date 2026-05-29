@@ -78,6 +78,7 @@ class _StaffScreenState
   List<Widget> _staffRows(
     AsyncValue<List<StaffApiModel>> async,
   ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return async.when(
       data: (list) {
         final filteredList = list.where((staff) {
@@ -94,12 +95,12 @@ class _StaffScreenState
         
         if (filteredList.isEmpty) {
           return [
-            const Padding(
-              padding: EdgeInsets.all(48),
+            Padding(
+              padding: const EdgeInsets.all(48),
               child: Center(
                 child: Text(
                   'No matching staff members found.',
-                  style: TextStyle(color: AppColors.darkTextMuted),
+                  style: TextStyle(color: isDark ? AppColors.darkTextMuted : AppColors.textMuted),
                 ),
               ),
             ),
@@ -270,14 +271,14 @@ class _StaffScreenState
         }
       },
       borderRadius: BorderRadius.circular(8),
-      child: Container(
+        child: Container(
         height: 40,
         padding: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
           color: isDark ? AppColors.darkSurface : AppColors.surface,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: AppColors.darkBorder,
+            color: isDark ? AppColors.darkBorder : AppColors.border,
           ),
         ),
         child: Row(
@@ -581,8 +582,7 @@ class _StaffScreenState
                           active
                               ? AppColors
                                   .primary
-                              : AppColors
-                                  .darkBorder,
+                              : (isDark ? AppColors.darkBorder : AppColors.border),
                     ),
                   ),
                   child: Text(
@@ -598,8 +598,7 @@ class _StaffScreenState
                                   active
                                       ? Colors
                                           .white
-                                      : AppColors
-                                          .darkText,
+                                      : (isDark ? AppColors.darkText : AppColors.text),
                             ),
                   ),
                 ),
@@ -624,8 +623,7 @@ class _StaffScreenState
               ),
               border: Border.all(
                 color:
-                    AppColors
-                        .darkBorder,
+                    isDark ? AppColors.darkBorder : AppColors.border,
               ),
             ),
             child: Column(
@@ -639,11 +637,10 @@ class _StaffScreenState
                   child: toolbar,
                 ),
 
-                const Divider(
+                Divider(
                   height: 1,
                   color:
-                      AppColors
-                          .darkBorder,
+                      isDark ? AppColors.darkBorder : AppColors.border,
                 ),
 
                 // TABLE
@@ -660,10 +657,9 @@ class _StaffScreenState
                               const EdgeInsets.symmetric(
                             horizontal: 18,
                           ),
-                          decoration: const BoxDecoration(
+                          decoration: BoxDecoration(
                             color:
-                                AppColors
-                                    .darkSurfaceAlt,
+                                isDark ? AppColors.darkSurfaceAlt : AppColors.surfaceAlt,
                           ),
                           child: Row(
                             children: showAttendancePanel
@@ -757,6 +753,7 @@ class _StaffScreenState
     StaffMember s,
     StaffApiModel apiModel,
   ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding:
           const EdgeInsets.symmetric(
@@ -764,11 +761,11 @@ class _StaffScreenState
         vertical: 16,
       ),
 
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         border: Border(
           top: BorderSide(
             color:
-                AppColors.darkBorder,
+                isDark ? AppColors.darkBorder : AppColors.border,
           ),
         ),
       ),
@@ -840,8 +837,7 @@ class _StaffScreenState
                                 .caption
                                 .copyWith(
                                   color:
-                                      AppColors
-                                          .darkTextMuted,
+                                      isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                                 ),
                       ),
                     ],
@@ -975,6 +971,7 @@ class _StaffScreenState
   }
 
   Widget _buildAttendanceBadge(String status) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     Color foreground;
     Color background;
     bool isOutline = false;
@@ -994,8 +991,8 @@ class _StaffScreenState
         background = AppColors.dangerSoft;
         break;
       case 'ON_LEAVE':
-        foreground = AppColors.darkTextMuted;
-        background = AppColors.darkBorder;
+        foreground = isDark ? AppColors.darkTextMuted : AppColors.textMuted;
+        background = isDark ? AppColors.darkBorder : AppColors.border;
         break;
       case 'EXCUSED':
         foreground = AppColors.purple;
@@ -1003,7 +1000,7 @@ class _StaffScreenState
         break;
       case 'NOT_CHECKED_IN':
       default:
-        foreground = AppColors.darkTextMuted;
+        foreground = isDark ? AppColors.darkTextMuted : AppColors.textMuted;
         background = Colors.transparent;
         isOutline = true;
         label = 'NOT CHECKED IN';
@@ -1015,7 +1012,7 @@ class _StaffScreenState
       decoration: BoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(12),
-        border: isOutline ? Border.all(color: AppColors.darkBorder) : null,
+        border: isOutline ? Border.all(color: isDark ? AppColors.darkBorder : AppColors.border) : null,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1070,10 +1067,12 @@ class _StaffScreenState
               backgroundColor: Theme.of(context).brightness == Brightness.dark
                   ? AppColors.darkSurface
                   : AppColors.surface,
-              shape: RoundedRectangleBorder(
+               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
-                side: const BorderSide(
-                  color: AppColors.darkBorder,
+                side: BorderSide(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? AppColors.darkBorder
+                      : AppColors.border,
                   width: 1,
                 ),
               ),
@@ -1108,10 +1107,12 @@ class _StaffScreenState
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Text(
+                     Text(
                       'Current status for today is: ${item['status']}',
                       style: AppTextStyles.caption.copyWith(
-                        color: AppColors.darkTextMuted,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? AppColors.darkTextMuted
+                            : AppColors.textMuted,
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -1241,10 +1242,11 @@ class _StaffScreenState
     );
   }
 
-  Widget _attendanceRow(
+    Widget _attendanceRow(
     Map<String, dynamic> item,
     int index,
   ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final staff = item['staff'] as StaffApiModel;
     final status = item['status'] as String;
     
@@ -1276,10 +1278,10 @@ class _StaffScreenState
         horizontal: 18,
         vertical: 16,
       ),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         border: Border(
           top: BorderSide(
-            color: AppColors.darkBorder,
+            color: isDark ? AppColors.darkBorder : AppColors.border,
           ),
         ),
       ),
@@ -1321,12 +1323,12 @@ class _StaffScreenState
                         ),
                       ),
                       const SizedBox(height: 2),
-                      Text(
+                       Text(
                         staff.staffIdCode,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: AppTextStyles.caption.copyWith(
-                          color: AppColors.darkTextMuted,
+                          color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                         ),
                       ),
                     ],
@@ -1365,10 +1367,10 @@ class _StaffScreenState
                 _buildAttendanceBadge(status),
                 if (status == 'PRESENT' || status == 'LATE') ...[
                   const SizedBox(height: 4),
-                  Text(
+                   Text(
                     'In: $checkInTimeStr',
                     style: AppTextStyles.caption.copyWith(
-                      color: AppColors.darkTextMuted,
+                      color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                       fontSize: 10,
                     ),
                   ),
@@ -1408,6 +1410,7 @@ class _StaffScreenState
     BuildContext context,
     AsyncValue<List<Map<String, dynamic>>> combinedAsync,
   ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return combinedAsync.when(
       data: (list) {
         final filteredList = list.where((item) {
@@ -1430,12 +1433,12 @@ class _StaffScreenState
         
         if (filteredList.isEmpty) {
           return [
-            const Padding(
-              padding: EdgeInsets.all(48),
+            Padding(
+              padding: const EdgeInsets.all(48),
               child: Center(
                 child: Text(
                   'No matching attendance records found.',
-                  style: TextStyle(color: AppColors.darkTextMuted),
+                  style: TextStyle(color: isDark ? AppColors.darkTextMuted : AppColors.textMuted),
                 ),
               ),
             ),
@@ -1546,6 +1549,7 @@ class _StaffScreenState
     IconData icon,
     VoidCallback onTap,
   ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return InkWell(
       borderRadius:
           BorderRadius.circular(
@@ -1566,7 +1570,7 @@ class _StaffScreenState
 
           border: Border.all(
             color:
-                AppColors.darkBorder,
+                isDark ? AppColors.darkBorder : AppColors.border,
           ),
         ),
 
@@ -1574,7 +1578,7 @@ class _StaffScreenState
           icon,
           size: 18,
           color:
-              AppColors.darkTextMuted,
+              isDark ? AppColors.darkTextMuted : AppColors.textMuted,
         ),
       ),
     );

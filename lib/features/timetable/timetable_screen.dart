@@ -47,8 +47,12 @@ class _TimetableScreenState
     '09:00',
     '10:00',
     '11:00',
+    '12:00',
     '01:00',
+    '02:00',
     '03:00',
+    '04:00',
+    '05:00',
   ];
 
   final List<String> days = [
@@ -109,13 +113,15 @@ class _TimetableScreenState
       if (staff != null) {
         activeStaffId = staff.id;
       }
+      activeStage = selectedStageInt;
+      filterProgramId = selectedProgramId;
     } else {
       activeSessionId = sessionAsync.whenOrNull(data: (d) => d)?.id;
       activeStage = selectedStageInt;
       filterProgramId = selectedProgramId;
     }
 
-    if (isTeacher) {
+    if (isTeacher && selectedProgramId == null) {
       if (activeSessionId != null && activeStaffId != null) {
         final slotsAsync = ref.watch(timetableSlotsListProvider((
           sessionId: activeSessionId,
@@ -165,6 +171,7 @@ class _TimetableScreenState
 
   Widget _buildControls(bool isPhone) {
     final isStudent = AppSession.currentRole == 'student';
+    final isTeacher = AppSession.currentRole == 'teacher';
     final programsAsync = ref.watch(programsProvider);
     final sessionAsync = ref.watch(currentAcademicSessionProvider);
     final activeSessionId = sessionAsync.value?.id;
@@ -176,22 +183,48 @@ class _TimetableScreenState
               data: (programs) {
                 if (programs.isEmpty) return const SizedBox.shrink();
 
-                if (selectedProgramId == null || !programs.any((p) => p.id == selectedProgramId)) {
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    if (mounted) setState(() => selectedProgramId = programs.first.id);
-                  });
-                  return const SizedBox.shrink();
+                if (!isTeacher) {
+                  if (selectedProgramId == null || !programs.any((p) => p.id == selectedProgramId)) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted) setState(() => selectedProgramId = programs.first.id);
+                    });
+                    return const SizedBox.shrink();
+                  }
+                } else {
+                  if (selectedProgramId != null && !programs.any((p) => p.id == selectedProgramId)) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted) setState(() => selectedProgramId = null);
+                    });
+                    return const SizedBox.shrink();
+                  }
                 }
 
+                final List<String> dropdownItems = [];
+                if (isTeacher) {
+                  dropdownItems.add('My Timetable');
+                }
+                dropdownItems.addAll(programs.map((p) => p.code));
+
+                final String currentValue = (isTeacher && selectedProgramId == null)
+                    ? 'My Timetable'
+                    : programs.firstWhere((p) => p.id == selectedProgramId).code;
+
                 return _dropdown(
-                  value: programs.firstWhere((p) => p.id == selectedProgramId).code,
-                  items: programs.map((p) => p.code).toList(),
+                  value: currentValue,
+                  items: dropdownItems,
                   onChanged: (v) {
-                    final p = programs.firstWhere((p) => p.code == v);
-                    setState(() {
-                      selectedProgramId = p.id;
-                      selectedStageInt = null;
-                    });
+                    if (isTeacher && v == 'My Timetable') {
+                      setState(() {
+                        selectedProgramId = null;
+                        selectedStageInt = null;
+                      });
+                    } else {
+                      final p = programs.firstWhere((p) => p.code == v);
+                      setState(() {
+                        selectedProgramId = p.id;
+                        selectedStageInt = null;
+                      });
+                    }
                   },
                 );
               },
@@ -296,7 +329,7 @@ class _TimetableScreenState
                   label: const Text('Print'),
                 ),
               ),
-              if (!isStudent && selectedProgramId != null && selectedStageInt != null && activeSessionId != null) ...[
+              if (!isStudent && !isTeacher && selectedProgramId != null && selectedStageInt != null && activeSessionId != null) ...[
                 SizedBox(width: 12),
                 Expanded(
                   child: ElevatedButton.icon(
@@ -323,45 +356,62 @@ class _TimetableScreenState
     }
 
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
+        Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            ...filters,
-            if (filters.isNotEmpty) SizedBox(width: 18),
-            ..._withSpacing(badges),
-            const Spacer(),
-            OutlinedButton.icon(
-              onPressed: _isPrinting ? null : _printTimetable,
-              icon: _isPrinting
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
-                      ),
-                    )
-                  : const Icon(Icons.print_rounded),
-              label: const Text('Print'),
+            // Left Group: Filters & Badges
+            Wrap(
+              spacing: 12,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                ...filters,
+                ...badges,
+              ],
             ),
-            if (!isStudent && selectedProgramId != null && selectedStageInt != null && activeSessionId != null) ...[
-              SizedBox(width: 12),
-              ElevatedButton.icon(
-                onPressed: () {
-                  showResponsiveModal(
-                    context: context,
-                    barrierColor: Colors.black54,
-                    child: AddSlotModal(
-                      programId: selectedProgramId!,
-                      stage: selectedStageInt!,
-                      sessionId: activeSessionId,
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.add_rounded),
-                label: const Text('Add Slot'),
-              ),
-            ],
+            // Right Group: Action Buttons
+            Wrap(
+              spacing: 12,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: _isPrinting ? null : _printTimetable,
+                  icon: _isPrinting
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                          ),
+                        )
+                      : const Icon(Icons.print_rounded),
+                  label: const Text('Print'),
+                ),
+                if (!isStudent && !isTeacher && selectedProgramId != null && selectedStageInt != null && activeSessionId != null)
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      showResponsiveModal(
+                        context: context,
+                        barrierColor: Colors.black54,
+                        child: AddSlotModal(
+                          programId: selectedProgramId!,
+                          stage: selectedStageInt!,
+                          sessionId: activeSessionId,
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.add_rounded),
+                    label: const Text('Add Slot'),
+                  ),
+              ],
+            ),
           ],
         ),
       ],
@@ -418,7 +468,7 @@ class _TimetableScreenState
                         Text(
                           '${todaySlots.length} classes scheduled',
                           style: AppTextStyles.caption.copyWith(
-                            color: AppColors.darkTextMuted,
+                            color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                           ),
                         ),
                       ],
@@ -428,7 +478,7 @@ class _TimetableScreenState
               ),
             ),
             Divider(
-              color: AppColors.darkBorder,
+              color: isDark ? AppColors.darkBorder : AppColors.border,
               height: 1,
             ),
             Expanded(
@@ -452,7 +502,7 @@ class _TimetableScreenState
                         child: Text(
                           'No classes scheduled for this day.',
                           style: AppTextStyles.body.copyWith(
-                            color: AppColors.darkTextMuted,
+                            color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                           ),
                           textAlign: TextAlign.center,
                         ),
@@ -589,6 +639,8 @@ class _TimetableScreenState
       color = AppColors.purple;
     }
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
@@ -612,7 +664,7 @@ class _TimetableScreenState
               vertical: 8,
             ),
             decoration: BoxDecoration(
-              color: AppColors.darkSurfaceAlt,
+              color: isDark ? AppColors.darkSurfaceAlt : AppColors.surfaceAlt,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
@@ -621,6 +673,7 @@ class _TimetableScreenState
               style: AppTextStyles.bodySm.copyWith(
                 fontWeight: FontWeight.w700,
                 fontSize: 11,
+                color: isDark ? AppColors.darkText : AppColors.text,
               ),
             ),
           ),
@@ -639,13 +692,23 @@ class _TimetableScreenState
                 ),
                 SizedBox(height: 6),
                 Text(
+                  '${_formatTimeForDisplay(slot.startTime)} - ${_formatTimeForDisplay(slot.endTime)}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.caption.copyWith(
+                    color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(height: 6),
+                Text(
                   AppSession.currentRole == 'teacher'
                       ? 'Stage ${slot.stage} · ${slot.room ?? 'N/A'}'
                       : '${slot.staffName} · ${slot.room ?? 'N/A'}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.caption.copyWith(
-                    color: AppColors.darkTextMuted,
+                    color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                   ),
                 ),
               ],
@@ -695,16 +758,17 @@ class _TimetableScreenState
   }
 
   Widget _timeHeader() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       width: 90,
       height: 90,
       padding: const EdgeInsets.all(12),
       alignment: Alignment.topLeft,
       decoration: BoxDecoration(
-        color: AppColors.darkSurfaceAlt,
+        color: isDark ? AppColors.darkSurfaceAlt : AppColors.surfaceAlt,
         border: Border(
           right: BorderSide(
-            color: AppColors.darkBorder,
+            color: isDark ? AppColors.darkBorder : AppColors.border,
           ),
         ),
       ),
@@ -712,28 +776,31 @@ class _TimetableScreenState
         'TIME',
         style: AppTextStyles.labelSm.copyWith(
           fontSize: 13,
+          color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
         ),
       ),
     );
   }
 
   Widget _dayHeader(String day) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Expanded(
       child: Container(
         height: 90,
         padding: const EdgeInsets.all(14),
         alignment: Alignment.topLeft,
         decoration: BoxDecoration(
-          color: AppColors.darkSurfaceAlt,
+          color: isDark ? AppColors.darkSurfaceAlt : AppColors.surfaceAlt,
           border: Border(
             right: BorderSide(
-              color: AppColors.darkBorder,
+              color: isDark ? AppColors.darkBorder : AppColors.border,
             ),
           ),
         ),
         child: Text(day.toUpperCase(),
           style: AppTextStyles.labelSm.copyWith(
             fontSize: 13,
+            color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
           ),
         ),
       ),
@@ -741,8 +808,9 @@ class _TimetableScreenState
   }
 
   Widget _timeRow(String time, List<api.TimetableSlot> slots) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return SizedBox(
-      height: 90,
+      height: 105,
       child: Row(
         children: [
           Container(
@@ -752,10 +820,10 @@ class _TimetableScreenState
             decoration: BoxDecoration(
               border: Border(
                 top: BorderSide(
-                  color: AppColors.darkBorder,
+                  color: isDark ? AppColors.darkBorder : AppColors.border,
                 ),
                 right: BorderSide(
-                  color: AppColors.darkBorder,
+                  color: isDark ? AppColors.darkBorder : AppColors.border,
                 ),
               ),
             ),
@@ -763,6 +831,7 @@ class _TimetableScreenState
               time,
               style: AppTextStyles.bodySm.copyWith(
                 fontWeight: FontWeight.w700,
+                color: isDark ? AppColors.darkText : AppColors.text,
               ),
             ),
           ),
@@ -790,17 +859,18 @@ class _TimetableScreenState
     } catch (_) {}
 
     final isAdmin = AppSession.currentRole == 'admin';
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.all(8),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
         decoration: BoxDecoration(
           border: Border(
             top: BorderSide(
-              color: AppColors.darkBorder,
+              color: isDark ? AppColors.darkBorder : AppColors.border,
             ),
             right: BorderSide(
-              color: AppColors.darkBorder,
+              color: isDark ? AppColors.darkBorder : AppColors.border,
             ),
           ),
         ),
@@ -827,8 +897,10 @@ class _TimetableScreenState
       color = AppColors.purple;
     }
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       decoration: BoxDecoration(
         color: color.withValues(alpha: .18),
         borderRadius: BorderRadius.circular(14),
@@ -854,13 +926,23 @@ class _TimetableScreenState
           ),
           SizedBox(height: 4),
           Text(
+            '${_formatTimeForDisplay(slot.startTime)} - ${_formatTimeForDisplay(slot.endTime)}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.caption.copyWith(
+              color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          SizedBox(height: 4),
+          Text(
             AppSession.currentRole == 'teacher'
                 ? 'Stage ${slot.stage} - ${slot.room ?? 'N/A'}'
                 : '${slot.staffName} - ${slot.room ?? 'N/A'}',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: AppTextStyles.caption.copyWith(
-              color: AppColors.darkTextMuted,
+              color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
             ),
           ),
         ],
@@ -873,32 +955,42 @@ class _TimetableScreenState
     required List<String> items,
     required void Function(String?) onChanged,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       height: 44,
       margin: const EdgeInsets.only(right: 12),
       padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(
-        color: AppColors.darkSurface,
+        color: isDark ? AppColors.darkSurface : AppColors.surface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: AppColors.darkBorder,
+          color: isDark ? AppColors.darkBorder : AppColors.border,
         ),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: value,
           borderRadius: BorderRadius.circular(14),
-          dropdownColor: AppColors.darkSurface,
+          dropdownColor: isDark ? AppColors.darkSurface : AppColors.surface,
           style: AppTextStyles.body.copyWith(
             fontWeight: FontWeight.w600,
+            color: isDark ? AppColors.darkText : AppColors.text,
           ),
-          icon: const Icon(Icons.keyboard_arrow_down_rounded),
+          icon: Icon(
+            Icons.keyboard_arrow_down_rounded,
+            color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+          ),
           onChanged: onChanged,
           items: items
               .map(
                 (e) => DropdownMenuItem(
                   value: e,
-                  child: Text(e),
+                  child: Text(
+                    e,
+                    style: TextStyle(
+                      color: isDark ? AppColors.darkText : AppColors.text,
+                    ),
+                  ),
                 ),
               )
               .toList(),
@@ -986,18 +1078,23 @@ class _TimetableScreenState
         programId = student.program?.id;
       }
     } else if (isTeacher) {
-      final staffAsync = ref.read(currentStaffProvider);
-      final staff = staffAsync.value;
-      if (staff != null) {
-        staffId = staff.id;
+      if (selectedProgramId == null) {
+        final staffAsync = ref.read(currentStaffProvider);
+        final staff = staffAsync.value;
+        if (staff != null) {
+          staffId = staff.id;
+        }
+      } else {
+        stage = selectedStageInt;
+        programId = selectedProgramId;
       }
     } else {
       stage = selectedStageInt;
       programId = selectedProgramId;
     }
 
-    // Validation: non-teacher must select stage
-    if (!isTeacher && stage == null) {
+    // Validation: if printing a class timetable, stage must be selected
+    if (staffId == null && stage == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please select a program and stage first.')),
       );
@@ -1010,7 +1107,7 @@ class _TimetableScreenState
       final repo = ref.read(timetableRepositoryProvider);
       final pdfBytes = await repo.getTimetablePdf(
         sessionId: activeSessionId,
-        stage: stage ?? 0,
+        stage: stage,
         programId: programId,
         staffId: staffId,
       );

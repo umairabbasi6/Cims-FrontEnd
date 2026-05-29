@@ -1,4 +1,5 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:cims/core/services/credential_store.dart';
 import 'package:cims/core/services/token_storage.dart';
@@ -23,6 +24,7 @@ class AuthRepository {
   Future<LoginResponse> login({
     required String username,
     required String password,
+    bool keepMeSignedIn = true,
   }) async {
     final response =
         await _service.login(
@@ -45,6 +47,9 @@ class AuthRepository {
       key: 'role',
       value: response.role,
     );
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('keep_me_signed_in', keepMeSignedIn);
 
     AuthSessionController.instance
         .setAuthenticated(response.role);

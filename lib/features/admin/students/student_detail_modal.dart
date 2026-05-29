@@ -799,7 +799,7 @@ class _StudentDetailModalState extends ConsumerState<StudentDetailModal> {
                       sessionsAsync.when(
                         data: (list) => DropdownButtonFormField<int>(
                           value: selectedSessId,
-                          dropdownColor: AppColors.darkSurface,
+                          dropdownColor: Theme.of(context).brightness == Brightness.dark ? AppColors.darkSurface : AppColors.surface,
                           items: list.map((s) => DropdownMenuItem<int>(
                             value: s.id,
                             child: Text(s.name),
@@ -815,7 +815,7 @@ class _StudentDetailModalState extends ConsumerState<StudentDetailModal> {
                       subjectsAsync.when(
                         data: (list) => DropdownButtonFormField<int>(
                           value: selectedSubId,
-                          dropdownColor: AppColors.darkSurface,
+                          dropdownColor: Theme.of(context).brightness == Brightness.dark ? AppColors.darkSurface : AppColors.surface,
                           items: list.map((s) => DropdownMenuItem<int>(
                             value: s.id,
                             child: Text('${s.name} (${s.code})'),
@@ -918,7 +918,7 @@ class _StudentDetailModalState extends ConsumerState<StudentDetailModal> {
                       sessionsAsync.when(
                         data: (list) => DropdownButtonFormField<int>(
                           value: selectedSessId,
-                          dropdownColor: AppColors.darkSurface,
+                          dropdownColor: Theme.of(context).brightness == Brightness.dark ? AppColors.darkSurface : AppColors.surface,
                           items: list.map((s) => DropdownMenuItem<int>(
                             value: s.id,
                             child: Text(s.name),
@@ -1016,7 +1016,7 @@ class _StudentDetailModalState extends ConsumerState<StudentDetailModal> {
                       const SizedBox(height: 6),
                       DropdownButtonFormField<String>(
                         value: selectedStatus,
-                        dropdownColor: AppColors.darkSurface,
+                        dropdownColor: Theme.of(context).brightness == Brightness.dark ? AppColors.darkSurface : AppColors.surface,
                         items: options.map((opt) => DropdownMenuItem<String>(
                           value: opt,
                           child: Text(opt.toUpperCase()),
@@ -1276,7 +1276,7 @@ class _StudentDetailModalState extends ConsumerState<StudentDetailModal> {
                             }
                             return DropdownButtonFormField<int>(
                               initialValue: selectedSessionId,
-                              dropdownColor: AppColors.darkSurface,
+                              dropdownColor: Theme.of(context).brightness == Brightness.dark ? AppColors.darkSurface : AppColors.surface,
                               items: list.map((e) => DropdownMenuItem<int>(
                                 value: e.id,
                                 child: Text(e.name),

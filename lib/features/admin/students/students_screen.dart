@@ -357,7 +357,7 @@ class _StudentsScreenState
             return DropdownButtonFormField<String>(
               initialValue: opts.contains(selectedStatusFilter) ? selectedStatusFilter : 'All Status',
               decoration: const InputDecoration(),
-              dropdownColor: AppColors.darkSurface,
+              dropdownColor: Theme.of(context).brightness == Brightness.dark ? AppColors.darkSurface : AppColors.surface,
               items: opts.map((e) => DropdownMenuItem(value: e, child: Text(prettyStatus(e)))).toList(),
               onChanged: (v) => setState(() => selectedStatusFilter = v ?? 'All Status'),
             );

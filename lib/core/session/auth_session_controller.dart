@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:cims/core/services/token_storage.dart';
 import 'package:cims/core/session/app_session.dart';
@@ -23,6 +24,15 @@ class AuthSessionController extends ChangeNotifier {
 
   /// Load token/role from storage into memory (call from `main` before `runApp`).
   Future<void> restore() async {
+    final prefs = await SharedPreferences.getInstance();
+    final keepMeSignedIn = prefs.getBool('keep_me_signed_in') ?? true;
+
+    if (!keepMeSignedIn) {
+      await TokenStorage.clear();
+      await _secure.delete(key: 'role');
+      await _secure.delete(key: 'refresh_token');
+    }
+
     final token = await TokenStorage.getToken();
     final storedRole =
         await _secure.read(key: 'role');

@@ -95,7 +95,7 @@ class _StudentFilterModalState extends ConsumerState<StudentFilterModal> {
                   programsAsync.when(
                     data: (list) => DropdownButtonFormField<int?>(
                       initialValue: _tempProgramId,
-                      dropdownColor: AppColors.darkSurface,
+                      dropdownColor: Theme.of(context).brightness == Brightness.dark ? AppColors.darkSurface : AppColors.surface,
                       items: [
                         const DropdownMenuItem<int?>(
                           value: null,
@@ -124,7 +124,7 @@ class _StudentFilterModalState extends ConsumerState<StudentFilterModal> {
                   sessionsAsync.when(
                     data: (list) => DropdownButtonFormField<int?>(
                       initialValue: _tempSessionId,
-                      dropdownColor: AppColors.darkSurface,
+                      dropdownColor: Theme.of(context).brightness == Brightness.dark ? AppColors.darkSurface : AppColors.surface,
                       items: [
                         const DropdownMenuItem<int?>(
                           value: null,
@@ -152,7 +152,7 @@ class _StudentFilterModalState extends ConsumerState<StudentFilterModal> {
                   const SizedBox(height: 8),
                   DropdownButtonFormField<String?>(
                     initialValue: _tempStatus,
-                    dropdownColor: AppColors.darkSurface,
+                    dropdownColor: Theme.of(context).brightness == Brightness.dark ? AppColors.darkSurface : AppColors.surface,
                     items: const [
                       DropdownMenuItem<String?>(
                         value: null,

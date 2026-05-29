@@ -34,6 +34,8 @@ class _LoginScreenState
 
   String _selectedRole = '';
 
+  bool _keepMeSignedIn = true;
+
   late final AnimationController _controller;
 
   late final Animation<double> _fade;
@@ -83,6 +85,7 @@ class _LoginScreenState
 
         password:
             _passwordCtrl.text.trim(),
+        keepMeSignedIn: _keepMeSignedIn,
       );
 
       ref.invalidate(currentUserProvider);
@@ -593,24 +596,39 @@ class _LoginScreenState
               const SizedBox(height: 18),
               Row(
                 children: [
-                  SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: Checkbox(
-                      value: true,
-                      onChanged: (_) {},
-                      activeColor: AppColors.primary,
-                      side: BorderSide(
-                        color: Colors.white.withValues(alpha: 0.4),
-                        width: 1.5,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Keep me signed in',
-                    style: AppTextStyles.bodySm.copyWith(
-                      color: Colors.white.withValues(alpha: 0.82),
+                  GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _keepMeSignedIn = !_keepMeSignedIn;
+                      });
+                    },
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: Checkbox(
+                            value: _keepMeSignedIn,
+                            onChanged: (val) {
+                              setState(() {
+                                _keepMeSignedIn = val ?? false;
+                              });
+                            },
+                            activeColor: AppColors.primary,
+                            side: BorderSide(
+                              color: Colors.white.withValues(alpha: 0.4),
+                              width: 1.5,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Keep me signed in',
+                          style: AppTextStyles.bodySm.copyWith(
+                            color: Colors.white.withValues(alpha: 0.82),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   const Spacer(),

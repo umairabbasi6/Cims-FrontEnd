@@ -452,7 +452,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                               decoration: const InputDecoration(
                                 labelText: 'SUBJECT',
                               ),
-                              dropdownColor: AppColors.darkSurface,
+                              dropdownColor: Theme.of(context).brightness == Brightness.dark ? AppColors.darkSurface : AppColors.surface,
                               items: list.map((s) => DropdownMenuItem<int>(
                                 value: s.id,
                                 child: Text(s.name),
@@ -493,7 +493,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                           decoration: const InputDecoration(
                             labelText: 'TYPE',
                           ),
-                          dropdownColor: AppColors.darkSurface,
+                          dropdownColor: Theme.of(context).brightness == Brightness.dark ? AppColors.darkSurface : AppColors.surface,
                           items: const [
                             DropdownMenuItem(
                               value: 'Theory',

@@ -1,4 +1,5 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:cims/core/services/student_session_storage.dart';
 import 'package:cims/core/services/token_storage.dart';
@@ -14,5 +15,7 @@ class CredentialStore {
     await TokenStorage.clear();
     await StudentSessionStorage.clear();
     await _secure.deleteAll();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('keep_me_signed_in');
   }
 }

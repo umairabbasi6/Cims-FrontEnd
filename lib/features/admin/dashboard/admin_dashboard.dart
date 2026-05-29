@@ -63,8 +63,14 @@ class AdminDashboard extends ConsumerWidget {
                 isDark: isDark,
                 name: userName,
                 sessionName: data.currentSessionName,
-                onQuickAdd: () {},
-                onExport: () {},
+                feeDefaultersCount: data.feeDefaultersCount,
+                attendanceShortageCount: data.attendanceShortageCount,
+                resultSheetsAwaitingCount: data.resultSheetsAwaitingCount,
+                onNavigate: onNavigate,
+                onQuickAdd: () {
+                  _showQuickAddDialog(context, onNavigate);
+                },
+                onExport: () => onNavigate('/reports'),
               ),
               const SizedBox(height: 20),
               _StatsGrid(data: data),
@@ -160,6 +166,10 @@ class _HeroBanner extends StatelessWidget {
   final bool isDark;
   final String name;
   final String sessionName;
+  final int feeDefaultersCount;
+  final int attendanceShortageCount;
+  final int resultSheetsAwaitingCount;
+  final void Function(String route) onNavigate;
   final VoidCallback onQuickAdd;
   final VoidCallback onExport;
 
@@ -167,6 +177,10 @@ class _HeroBanner extends StatelessWidget {
     required this.isDark,
     required this.name,
     required this.sessionName,
+    required this.feeDefaultersCount,
+    required this.attendanceShortageCount,
+    required this.resultSheetsAwaitingCount,
+    required this.onNavigate,
     required this.onQuickAdd,
     required this.onExport,
   });
@@ -264,16 +278,16 @@ class _HeroBanner extends StatelessWidget {
                                 color: Colors.white.withValues(alpha: 0.86),
                                 height: 1.7,
                               ),
-                              children: const [
-                                TextSpan(text: 'You have '),
+                              children: [
+                                const TextSpan(text: 'You have '),
                                 TextSpan(
-                                  text: '14 fee defaulters, 6 attendance shortages, and 3 result sheets',
-                                  style: TextStyle(
+                                  text: '$feeDefaultersCount fee defaulters, $attendanceShortageCount attendance shortages, and $resultSheetsAwaitingCount result sheets',
+                                  style: const TextStyle(
                                     fontWeight: FontWeight.w800,
                                     color: Colors.white,
                                   ),
                                 ),
-                                TextSpan(text: ' awaiting publication. Quick actions are available below.'),
+                                const TextSpan(text: ' awaiting publication. Quick actions are available below.'),
                               ],
                             ),
                           ),
@@ -321,10 +335,22 @@ class _HeroBanner extends StatelessWidget {
               Wrap(
                 spacing: 12,
                 runSpacing: 12,
-                children: const [
-                  _QuickAction(icon: Icons.person_add_alt_1, label: 'Add Student'),
-                  _QuickAction(icon: Icons.receipt_long, label: 'Generate Fee'),
-                  _QuickAction(icon: Icons.grading_rounded, label: 'Publish Result'),
+                children: [
+                  _QuickAction(
+                    icon: Icons.person_add_alt_1,
+                    label: 'Add Student',
+                    onTap: () => onNavigate('/students'),
+                  ),
+                  _QuickAction(
+                    icon: Icons.receipt_long,
+                    label: 'Generate Fee',
+                    onTap: () => onNavigate('/fees'),
+                  ),
+                  _QuickAction(
+                    icon: Icons.grading_rounded,
+                    label: 'Publish Result',
+                    onTap: () => onNavigate('/results'),
+                  ),
                 ],
               ),
             ],
@@ -797,37 +823,93 @@ class _RecentActivity extends StatelessWidget {
 class _QuickAction extends StatelessWidget {
   final IconData icon;
   final String label;
+  final VoidCallback onTap;
 
   const _QuickAction({
     required this.icon,
     required this.label,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: Colors.white),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w700,
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(999),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: Colors.white),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
+}
+
+void _showQuickAddDialog(BuildContext context, void Function(String route) onNavigate) {
+  showDialog(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      backgroundColor: Theme.of(ctx).brightness == Brightness.dark ? AppColors.darkSurface : AppColors.surface,
+      title: Text(
+        'Quick Add',
+        style: AppTextStyles.h2.copyWith(
+          color: Theme.of(ctx).brightness == Brightness.dark ? Colors.white : Colors.black87,
+        ),
+      ),
+      content: Text(
+        'Choose what you would like to add:',
+        style: AppTextStyles.body.copyWith(
+          color: Theme.of(ctx).brightness == Brightness.dark ? Colors.white70 : Colors.black54,
+        ),
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+      ),
+      actions: [
+        TextButton.icon(
+          onPressed: () {
+            Navigator.pop(ctx);
+            onNavigate('/students');
+          },
+          icon: const Icon(Icons.person_add_alt_1_rounded, color: AppColors.primary),
+          label: const Text('Add Student'),
+        ),
+        TextButton.icon(
+          onPressed: () {
+            Navigator.pop(ctx);
+            onNavigate('/staff');
+          },
+          icon: const Icon(Icons.badge_rounded, color: AppColors.primary),
+          label: const Text('Add Staff'),
+        ),
+        TextButton.icon(
+          onPressed: () {
+            Navigator.pop(ctx);
+            onNavigate('/timetable');
+          },
+          icon: const Icon(Icons.schedule_rounded, color: AppColors.primary),
+          label: const Text('Add Timetable Slot'),
+        ),
+      ],
+    ),
+  );
 }
 
 class _PulseDot extends StatefulWidget {

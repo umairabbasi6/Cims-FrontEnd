@@ -48,9 +48,10 @@ Widget build(BuildContext context) {
 }
 
   Widget _systemSettingsCard() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.darkSurface,
+        color: isDark ? AppColors.darkSurface : AppColors.surface,
 
         borderRadius:
             BorderRadius.circular(
@@ -59,7 +60,7 @@ Widget build(BuildContext context) {
 
         border: Border.all(
           color:
-              AppColors.darkBorder,
+              isDark ? AppColors.darkBorder : AppColors.border,
         ),
       ),
 
@@ -102,7 +103,7 @@ Widget build(BuildContext context) {
                                 .body
                                 .copyWith(
                                   color:
-                                      AppColors.darkTextMuted,
+                                      isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                                 ),
                       ),
                     ],
@@ -123,7 +124,7 @@ Widget build(BuildContext context) {
           Divider(
             height: 1,
             color:
-                AppColors.darkBorder,
+                isDark ? AppColors.darkBorder : AppColors.border,
           ),
 
           // FORM
@@ -345,9 +346,10 @@ Widget build(BuildContext context) {
   }
 
   Widget _modulesCard() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.darkSurface,
+        color: isDark ? AppColors.darkSurface : AppColors.surface,
 
         borderRadius:
             BorderRadius.circular(
@@ -356,7 +358,7 @@ Widget build(BuildContext context) {
 
         border: Border.all(
           color:
-              AppColors.darkBorder,
+              isDark ? AppColors.darkBorder : AppColors.border,
         ),
       ),
 
@@ -394,8 +396,7 @@ Widget build(BuildContext context) {
                       AppTextStyles.body
                           .copyWith(
                     color:
-                        AppColors
-                            .darkTextMuted,
+                        isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                   ),
                 ),
               ],
@@ -405,7 +406,7 @@ Widget build(BuildContext context) {
           Divider(
             height: 1,
             color:
-                AppColors.darkBorder,
+                isDark ? AppColors.darkBorder : AppColors.border,
           ),
 
           Padding(
@@ -526,6 +527,7 @@ Widget build(BuildContext context) {
     required ValueChanged<bool>
     onChanged,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Row(
       children: [
         Container(
@@ -538,8 +540,7 @@ Widget build(BuildContext context) {
                     ? AppColors
                         .success
                         .withValues(alpha: .15)
-                    : AppColors
-                        .darkSurfaceAlt,
+                    : (isDark ? AppColors.darkSurfaceAlt : AppColors.surfaceAlt),
 
             borderRadius:
                 BorderRadius.circular(
@@ -557,8 +558,7 @@ Widget build(BuildContext context) {
             color:
                 enabled
                     ? AppColors.success
-                    : AppColors
-                        .darkTextMuted,
+                    : (isDark ? AppColors.darkTextMuted : AppColors.textMuted),
           ),
         ),
 
@@ -579,6 +579,7 @@ Widget build(BuildContext context) {
                         .copyWith(
                   fontWeight:
                       FontWeight.w700,
+                  color: isDark ? AppColors.darkText : AppColors.text,
                 ),
               ),
 
@@ -594,7 +595,7 @@ Widget build(BuildContext context) {
                         .caption
                         .copyWith(
                           color:
-                              AppColors.darkTextMuted,
+                              isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                         ),
               ),
             ],

@@ -196,7 +196,7 @@ class TimetableService {
 
   Future<Uint8List> getTimetablePdf({
     required int sessionId,
-    required int stage,
+    int? stage,
     int? programId,
     int? staffId,
   }) async {
@@ -204,7 +204,7 @@ class TimetableService {
       '/reports/timetable',
       queryParameters: {
         'session_id': sessionId,
-        'stage': stage,
+        if (stage != null) 'stage': stage,
         if (programId != null) 'program_id': programId,
         if (staffId != null) 'staff_id': staffId,
       },

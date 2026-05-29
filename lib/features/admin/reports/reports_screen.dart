@@ -542,15 +542,16 @@ class _ReportsScreenState
   Widget _programAnalyticsCard(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final bool isMobile = screenWidth < 600;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final barsAsync = ref.watch(programEnrollmentBarsProvider);
 
     return Container(
       height: isMobile ? 380 : 400,
       decoration: BoxDecoration(
-        color: AppColors.darkSurface,
+        color: isDark ? AppColors.darkSurface : AppColors.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.darkBorder),
+        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
       ),
       child: Padding(
         padding: EdgeInsets.all(isMobile ? 16 : 20),
@@ -562,13 +563,15 @@ class _ReportsScreenState
                     children: [
                       Text(
                         'Program Analytics',
-                        style: AppTextStyles.h3,
+                        style: AppTextStyles.h3.copyWith(
+                          color: isDark ? AppColors.darkText : AppColors.text,
+                        ),
                       ),
                       SizedBox(height: 4),
                       Text(
                         'Active students per program',
                         style: AppTextStyles.body.copyWith(
-                          color: AppColors.darkTextMuted,
+                          color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                         ),
                       ),
                     ],
@@ -581,13 +584,15 @@ class _ReportsScreenState
                           children: [
                             Text(
                               'Program Analytics',
-                              style: AppTextStyles.h3,
+                              style: AppTextStyles.h3.copyWith(
+                                color: isDark ? AppColors.darkText : AppColors.text,
+                              ),
                             ),
                             SizedBox(height: 4),
                             Text(
                               'Active students per program',
                               style: AppTextStyles.body.copyWith(
-                                color: AppColors.darkTextMuted,
+                                color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                               ),
                             ),
                           ],
@@ -596,7 +601,7 @@ class _ReportsScreenState
                     ],
                   ),
             SizedBox(height: 18),
-            Divider(color: AppColors.darkBorder),
+            Divider(color: isDark ? AppColors.darkBorder : AppColors.border),
             SizedBox(height: 20),
             Expanded(
               child: barsAsync.when(
@@ -646,6 +651,7 @@ class _ReportsScreenState
                               Text(bar.value.toInt().toString(),
                                 style: AppTextStyles.bodySm.copyWith(
                                   fontWeight: FontWeight.w800,
+                                  color: isDark ? AppColors.darkText : AppColors.text,
                                 ),
                               ),
                               SizedBox(height: 6),
@@ -668,7 +674,7 @@ class _ReportsScreenState
                               Text(
                                 bar.label,
                                 style: AppTextStyles.caption.copyWith(
-                                  color: AppColors.darkTextMuted,
+                                  color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                                   fontSize: 10,
                                 ),
                                 textAlign: TextAlign.center,
@@ -696,12 +702,13 @@ class _ReportsScreenState
 
     final trendAsync = ref.watch(passRateTrendProvider);
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       height: 400,
       decoration: BoxDecoration(
-        color: AppColors.darkSurface,
+        color: isDark ? AppColors.darkSurface : AppColors.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.darkBorder),
+        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
       ),
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -710,17 +717,19 @@ class _ReportsScreenState
           children: [
             Text(
               'Pass Rate Trend',
-              style: AppTextStyles.h3,
+              style: AppTextStyles.h3.copyWith(
+                color: isDark ? AppColors.darkText : AppColors.text,
+              ),
             ),
             SizedBox(height: 4),
             Text(
               'Pass rates across sessions',
               style: AppTextStyles.body.copyWith(
-                color: AppColors.darkTextMuted,
+                color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
               ),
             ),
             SizedBox(height: 16),
-            Divider(color: AppColors.darkBorder),
+            Divider(color: isDark ? AppColors.darkBorder : AppColors.border),
             SizedBox(height: 20),
             Expanded(
               child: trendAsync.when(
@@ -787,7 +796,7 @@ class _ReportsScreenState
                               Text(
                                 bar.label,
                                 style: AppTextStyles.caption.copyWith(
-                                  color: AppColors.darkTextMuted,
+                                  color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                                   fontSize: 10,
                                 ),
                                 textAlign: TextAlign.center,
@@ -1062,11 +1071,12 @@ class _ReportsScreenState
       ),
     ];
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.darkSurface,
+        color: isDark ? AppColors.darkSurface : AppColors.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.darkBorder),
+        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
       ),
       child: Column(
         children: [
@@ -1080,13 +1090,15 @@ class _ReportsScreenState
                     children: [
                       Text(
                         'PDF Reports',
-                        style: AppTextStyles.h3,
+                        style: AppTextStyles.h3.copyWith(
+                          color: isDark ? AppColors.darkText : AppColors.text,
+                        ),
                       ),
                       SizedBox(height: 4),
                       Text(
                         'Download official documents',
                         style: AppTextStyles.body.copyWith(
-                          color: AppColors.darkTextMuted,
+                          color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                         ),
                       ),
                     ],
@@ -1111,7 +1123,7 @@ class _ReportsScreenState
               onChanged: (val) => setState(() => _studentSearchQuery = val),
             ),
           ),
-          Divider(height: 1, color: AppColors.darkBorder),
+          Divider(height: 1, color: isDark ? AppColors.darkBorder : AppColors.border),
           if (isMobile)
             ...reports.map(_reportMobileCard)
           else
@@ -1124,8 +1136,8 @@ class _ReportsScreenState
                     Container(
                       height: 48,
                       padding: const EdgeInsets.symmetric(horizontal: 16),
-                      decoration: const BoxDecoration(
-                        color: AppColors.darkSurfaceAlt,
+                      decoration: BoxDecoration(
+                        color: isDark ? AppColors.darkSurfaceAlt : AppColors.surfaceAlt,
                       ),
                       child: Row(
                         children: [
@@ -1156,7 +1168,7 @@ class _ReportsScreenState
       initialValue: value,
       isExpanded: true,
       decoration: const InputDecoration(),
-      dropdownColor: AppColors.darkSurface,
+      dropdownColor: Theme.of(context).brightness == Brightness.dark ? AppColors.darkSurface : AppColors.surface,
       items: options
           .map(
             (opt) => DropdownMenuItem(
@@ -1193,7 +1205,7 @@ class _ReportsScreenState
       initialValue: value,
       isExpanded: true,
       decoration: const InputDecoration(labelText: 'PROGRAM'),
-      dropdownColor: AppColors.darkSurface,
+      dropdownColor: Theme.of(context).brightness == Brightness.dark ? AppColors.darkSurface : AppColors.surface,
       items: programs
           .map(
             (p) => DropdownMenuItem(
@@ -1217,7 +1229,7 @@ class _ReportsScreenState
       initialValue: value,
       isExpanded: true,
       decoration: const InputDecoration(labelText: 'STAGE'),
-      dropdownColor: AppColors.darkSurface,
+      dropdownColor: Theme.of(context).brightness == Brightness.dark ? AppColors.darkSurface : AppColors.surface,
       items: List.generate(
         totalStages,
         (index) => DropdownMenuItem(
@@ -1251,7 +1263,7 @@ class _ReportsScreenState
       initialValue: value,
       isExpanded: true,
       decoration: const InputDecoration(),
-      dropdownColor: AppColors.darkSurface,
+      dropdownColor: Theme.of(context).brightness == Brightness.dark ? AppColors.darkSurface : AppColors.surface,
       items:
           students
               .map(
@@ -1289,7 +1301,7 @@ class _ReportsScreenState
       initialValue: value,
       isExpanded: true,
       decoration: const InputDecoration(),
-      dropdownColor: AppColors.darkSurface,
+      dropdownColor: Theme.of(context).brightness == Brightness.dark ? AppColors.darkSurface : AppColors.surface,
       items:
           sessions
               .map(
@@ -1327,7 +1339,7 @@ class _ReportsScreenState
       initialValue: value,
       isExpanded: true,
       decoration: const InputDecoration(),
-      dropdownColor: AppColors.darkSurface,
+      dropdownColor: Theme.of(context).brightness == Brightness.dark ? AppColors.darkSurface : AppColors.surface,
       items:
           payments
               .map(
@@ -1345,12 +1357,13 @@ class _ReportsScreenState
   }
 
   Widget _reportMobileCard(_PdfReportRow e) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         border: Border(
-          top: BorderSide(color: AppColors.darkBorder),
+          top: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.border),
         ),
       ),
       child: Column(
@@ -1377,12 +1390,13 @@ class _ReportsScreenState
                       e.title,
                       style: AppTextStyles.body.copyWith(
                         fontWeight: FontWeight.w700,
+                        color: isDark ? AppColors.darkText : AppColors.text,
                       ),
                     ),
                     Text(
                       e.subtitle,
                       style: AppTextStyles.caption.copyWith(
-                        color: AppColors.darkTextMuted,
+                        color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                       ),
                     ),
                   ],
@@ -1414,6 +1428,7 @@ class _ReportsScreenState
   }
 
   Widget _reportRow(_PdfReportRow e) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: 16,
@@ -1421,7 +1436,7 @@ class _ReportsScreenState
       ),
       decoration: BoxDecoration(
         border: Border(
-          top: BorderSide(color: AppColors.darkBorder),
+          top: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.border),
         ),
       ),
       child: Row(
@@ -1453,6 +1468,7 @@ class _ReportsScreenState
                         e.title,
                         style: AppTextStyles.body.copyWith(
                           fontWeight: FontWeight.w700,
+                          color: isDark ? AppColors.darkText : AppColors.text,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -1460,7 +1476,7 @@ class _ReportsScreenState
                       Text(
                         e.subtitle,
                         style: AppTextStyles.caption.copyWith(
-                          color: AppColors.darkTextMuted,
+                          color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -1502,10 +1518,14 @@ class _ReportsScreenState
   }
 
   Widget _header(String text, double flex) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Expanded(
       flex: (flex * 10).toInt(),
       child: Text(text,
-        style: AppTextStyles.labelSm.copyWith(fontSize: 12),
+        style: AppTextStyles.labelSm.copyWith(
+          fontSize: 12,
+          color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+        ),
       ),
     );
   }
