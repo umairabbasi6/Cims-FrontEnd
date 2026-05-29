@@ -19,6 +19,7 @@ import 'package:cims/features/student/student_results_screen.dart';
 import 'package:cims/features/student/student_fee_status_screen.dart';
 import 'package:cims/features/student/student_profile_screen.dart';
 import 'package:cims/features/teacher/teacher_profile_screen.dart';
+import 'package:cims/features/teacher/teacher_classes_screen.dart';
 
 import 'package:cims/features/admin/departments/departments_screen.dart';
 import 'package:cims/features/admin/programs/programs_screen.dart';
@@ -268,11 +269,17 @@ class AppRouter {
           return _fadeTransition(
             state,
 
-            SessionsScreen(
-              onNavigate: (route) {
-                context.go(route);
-              },
-            ),
+            AppSession.currentRole == 'teacher'
+                ? TeacherClassesScreen(
+                    onNavigate: (route) {
+                      context.go(route);
+                    },
+                  )
+                : SessionsScreen(
+                    onNavigate: (route) {
+                      context.go(route);
+                    },
+                  ),
           );
         },
       ),

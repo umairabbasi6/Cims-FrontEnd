@@ -34,11 +34,15 @@ final currentStaffProvider = FutureProvider.autoDispose<StaffApiModel?>((ref) as
 
   final staff = await ref.watch(staffListProvider(null).future);
   
-  // Try to match by email (common pattern)
+  // Try to match by email or username prefix
   final match = staff.where((s) {
     final staffEmail = s.email?.toLowerCase();
     final userEmail = user.username.contains('@') ? user.username.toLowerCase() : '${user.username.toLowerCase()}@cims.edu.pk';
-    return staffEmail == userEmail || s.firstName.toLowerCase() == user.username.toLowerCase();
+    final usernamePrefix = user.username.split('.').first.toLowerCase();
+    return staffEmail == userEmail || 
+           s.firstName.toLowerCase() == user.username.toLowerCase() ||
+           s.firstName.toLowerCase() == usernamePrefix ||
+           user.username.toLowerCase().startsWith(s.firstName.toLowerCase());
   }).firstOrNull;
 
   return match;

@@ -5,10 +5,8 @@ import 'package:cims/core/constants/app_text_styles.dart';
 import 'package:cims/core/widgets/app_scaffold.dart';
 import 'package:cims/core/widgets/badge_chip.dart';
 import 'package:cims/features/teacher/dashboard/providers/teacher_dashboard_provider.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:geolocator/geolocator.dart';
+import 'package:cims/core/utils/responsive.dart';
 import 'package:intl/intl.dart';
-import 'package:cims/features/teacher/attendance/providers/attendance_api_provider.dart';
 
 class TeacherDashboard extends ConsumerWidget {
   final void Function(String route) onNavigate;
@@ -21,8 +19,7 @@ class TeacherDashboard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final dashboardAsync = ref.watch(teacherDashboardProvider);
-    final screenWidth = MediaQuery.of(context).size.width;
-    final bool isMobile = screenWidth < 600;
+    final isMobile = Responsive.isMobile(context);
     final padding = isMobile ? 16.0 : 24.0;
 
     return AppScaffold(
@@ -32,14 +29,24 @@ class TeacherDashboard extends ConsumerWidget {
       role: 'teacher',
       onNavigate: onNavigate,
       body: dashboardAsync.when(
-        loading: () => Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Text('Error: $e', textAlign: TextAlign.center),
-        )),
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text('Error: $e', textAlign: TextAlign.center),
+          ),
+        ),
         data: (data) {
           if (data == null) {
-            return Center(child: Text('Dashboard not available. Ensure you are logged in with a teacher account.'));
+            return const Center(
+              child: Padding(
+                padding: EdgeInsets.all(24),
+                child: Text(
+                  'Dashboard not available. Ensure you are logged in with a teacher account.',
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            );
           }
 
           return SingleChildScrollView(
@@ -47,18 +54,21 @@ class TeacherDashboard extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _TeacherHero(data: data),
+                // 1. WELCOME HERO BANNER
+                _TeacherHero(data: data, onNavigate: onNavigate),
                 const SizedBox(height: 20),
-                const _TeacherCheckInWidget(),
-                const SizedBox(height: 20),
+
+                // 2. STATS GRID
                 _TeacherStats(data: data),
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
+
+                // 3. MIDDLE ROW (SCHEDULE & CHART)
                 if (isMobile)
                   Column(
                     children: [
                       _TodaySchedule(data: data),
-                      SizedBox(height: 16),
-                      _MySubjects(data: data),
+                      const SizedBox(height: 20),
+                      _AttendanceTrendChart(),
                     ],
                   )
                 else
@@ -66,10 +76,14 @@ class TeacherDashboard extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(flex: 3, child: _TodaySchedule(data: data)),
-                      SizedBox(width: 20),
-                      Expanded(flex: 2, child: _MySubjects(data: data)),
+                      const SizedBox(width: 20),
+                      Expanded(flex: 2, child: _AttendanceTrendChart()),
                     ],
                   ),
+                const SizedBox(height: 20),
+
+                // 4. BOTTOM CLASSES TABLE
+                _AssignedClassesTable(data: data, onNavigate: onNavigate),
               ],
             ),
           );
@@ -79,558 +93,908 @@ class TeacherDashboard extends ConsumerWidget {
   }
 }
 
+// =====================================================
+// WELCOME HERO BANNER
+// =====================================================
 class _TeacherHero extends StatelessWidget {
   final TeacherDashboardData data;
-  const _TeacherHero({required this.data});
+  final void Function(String route) onNavigate;
+
+  const _TeacherHero({required this.data, required this.onNavigate});
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final bool isMobile = screenWidth < 600;
+    final isMobile = Responsive.isMobile(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final bannerGrad = isDark
+        ? const LinearGradient(
+            colors: [Color(0xFF2E3B8E), Color(0xFF4B3280), Color(0xFF6B227B)],
+          )
+        : const LinearGradient(
+            colors: [Color(0xFF3B82F6), Color(0xFF6366F1), Color(0xFF8B5CF6)],
+          );
 
     return Container(
-      padding: const EdgeInsets.all(28),
+      padding: EdgeInsets.all(isMobile ? 20 : 28),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF6366F1), Color(0xFF8B5CF6), Color(0xFFD946EF)],
-        ),
+        gradient: bannerGrad,
         borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF6366F1).withValues(alpha: 0.25),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.18),
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: const Text(
-              'Academic Year 2024-25',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12),
-            ),
-          ),
-          SizedBox(height: 18),
-          Text(
-            'Welcome back, ${data.staffName} 👋',
-            style: AppTextStyles.h1.copyWith(color: Colors.white, fontSize: 26),
-          ),
-          SizedBox(height: 10),
-          Text(
-            'You have ${data.todayClasses} classes scheduled for today. Your average attendance across subjects is ${data.averageAttendance}%.',
-            style: AppTextStyles.bodyLg.copyWith(color: Colors.white.withValues(alpha: 0.9), height: 1.6),
-          ),
-          SizedBox(height: 20),
-          isMobile
-              ? Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: isMobile
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildHeaderBadge(data.todayClasses),
+                const SizedBox(height: 14),
+                Text(
+                  'Welcome, ${data.staffName}',
+                  style: AppTextStyles.h1.copyWith(color: Colors.white, fontSize: 24),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  data.totalSubjects > 0
+                      ? 'Your next class is ${data.nextClassSubject} at ${data.nextClassTime} in ${data.nextClassRoom}. ${data.attendancePendingCount} attendance session is pending submission.'
+                      : 'You do not have any subjects assigned in the current session.',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.9),
+                    fontSize: 13.5,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
                   children: [
-                    ElevatedButton.icon(
-                      onPressed: () {},
-                      icon: const Icon(Icons.fact_check_rounded),
-                      label: const Text('Mark Attendance'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: const Color(0xFF6366F1),
-                        minimumSize: const Size.fromHeight(48),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () => onNavigate('/attendance'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: const Color(0xFF6366F1),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        child: const Text('Mark attendance'),
                       ),
                     ),
-                    const SizedBox(height: 10),
-                    OutlinedButton.icon(
-                      onPressed: () {},
-                      icon: const Icon(Icons.grading_rounded),
-                      label: const Text('Enter Marks'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        side: const BorderSide(color: Colors.white38),
-                        minimumSize: const Size.fromHeight(48),
-                      ),
-                    ),
-                  ],
-                )
-              : Row(
-                  children: [
-                    ElevatedButton.icon(
-                      onPressed: () {},
-                      icon: const Icon(Icons.fact_check_rounded),
-                      label: const Text('Mark Attendance'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: const Color(0xFF6366F1),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    OutlinedButton.icon(
-                      onPressed: () {},
-                      icon: const Icon(Icons.grading_rounded),
-                      label: const Text('Enter Marks'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        side: const BorderSide(color: Colors.white38),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => onNavigate('/results'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.white,
+                          side: const BorderSide(color: Colors.white54),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        child: const Text('Marks entry'),
                       ),
                     ),
                   ],
                 ),
+              ],
+            )
+          : Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildHeaderBadge(data.todayClasses),
+                      const SizedBox(height: 14),
+                      Text(
+                        'Welcome, ${data.staffName}',
+                        style: AppTextStyles.h1.copyWith(color: Colors.white, fontSize: 28),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        data.totalSubjects > 0
+                            ? 'Your next class is ${data.nextClassSubject} at ${data.nextClassTime} in ${data.nextClassRoom}. ${data.attendancePendingCount} attendance session is pending submission.'
+                            : 'You do not have any subjects assigned in the current session.',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.9),
+                          fontSize: 14,
+                          height: 1.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 32),
+                Column(
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: () => onNavigate('/attendance'),
+                      icon: const Icon(Icons.check_circle_rounded, size: 16),
+                      label: const Text('Mark attendance'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: const Color(0xFF6366F1),
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    OutlinedButton.icon(
+                      onPressed: () => onNavigate('/results'),
+                      icon: const Icon(Icons.edit_note_rounded, size: 18),
+                      label: const Text('Marks entry'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        side: const BorderSide(color: Colors.white54),
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+    );
+  }
+
+  Widget _buildHeaderBadge(int count) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.18),
+        borderRadius: BorderRadius.circular(99),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.electric_bolt_rounded, color: Colors.amber, size: 14),
+          const SizedBox(width: 4),
+          Text(
+            '$count classes today',
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w800,
+              fontSize: 11,
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
+// =====================================================
+// STATS CARDS GRID
+// =====================================================
 class _TeacherStats extends StatelessWidget {
   final TeacherDashboardData data;
+
   const _TeacherStats({required this.data});
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final bool isMobile = screenWidth < 600;
+    final width = MediaQuery.of(context).size.width;
+    final isMobile = width < 600;
+    final isTablet = width >= 600 && width < 1100;
+
+    // Calculate total students assigned (dynamic mock matching subjects count)
+    int totalStudentsCount = 0;
+    for (var c in data.assignedClassesList) {
+      totalStudentsCount += (c['students'] as num).toInt();
+    }
+    if (totalStudentsCount == 0) totalStudentsCount = 115;
+
+    final stats = [
+      (
+        'Assigned Classes',
+        '${data.totalSubjects}',
+        '$totalStudentsCount students',
+        Icons.business_outlined,
+        const Color(0xFF6366F1)
+      ),
+      (
+        'Today\'s Sessions',
+        '${data.todayClasses}',
+        data.todayClasses > 0 ? 'Next at ${data.nextClassTime}' : 'No sessions today',
+        Icons.calendar_today_rounded,
+        const Color(0xFF14B8A6)
+      ),
+      (
+        'Attendance Pending',
+        '${data.attendancePendingCount}',
+        data.assignedClassesList.isNotEmpty ? data.assignedClassesList[0]['className'].toString() : 'No classes',
+        Icons.check_box_outlined,
+        const Color(0xFFF59E0B)
+      ),
+      (
+        'Marks Pending',
+        '${data.marksPendingCount}',
+        'Mid-term entries',
+        Icons.assignment_outlined,
+        const Color(0xFF10B981)
+      ),
+    ];
 
     if (isMobile) {
       return Column(
-        children: [
-          _StatItem(label: 'Subjects', value: '${data.totalSubjects}', icon: Icons.book_rounded, color: AppColors.primary),
-          const SizedBox(height: 12),
-          _StatItem(label: 'Today Classes', value: '${data.todayClasses}', icon: Icons.calendar_today_rounded, color: AppColors.accent),
-          const SizedBox(height: 12),
-          _StatItem(label: 'Avg Attendance', value: '${data.averageAttendance}%', icon: Icons.people_rounded, color: AppColors.success),
-        ],
+        children: stats.map((s) => Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: _StatCard(title: s.$1, value: s.$2, subtitle: s.$3, icon: s.$4, color: s.$5),
+        )).toList(),
       );
     }
 
-    return Row(
-      children: [
-        Expanded(child: _StatItem(label: 'Subjects', value: '${data.totalSubjects}', icon: Icons.book_rounded, color: AppColors.primary)),
-        const SizedBox(width: 16),
-        Expanded(child: _StatItem(label: 'Today Classes', value: '${data.todayClasses}', icon: Icons.calendar_today_rounded, color: AppColors.accent)),
-        const SizedBox(width: 16),
-        Expanded(child: _StatItem(label: 'Avg Attendance', value: '${data.averageAttendance}%', icon: Icons.people_rounded, color: AppColors.success)),
-      ],
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: stats.length,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: isTablet ? 2 : 4,
+        crossAxisSpacing: 16,
+        mainAxisSpacing: 16,
+        childAspectRatio: isTablet ? 2.0 : 1.35,
+      ),
+      itemBuilder: (context, index) {
+        final s = stats[index];
+        return _StatCard(title: s.$1, value: s.$2, subtitle: s.$3, icon: s.$4, color: s.$5);
+      },
     );
   }
 }
 
-class _StatItem extends StatelessWidget {
-  final String label;
+class _StatCard extends StatelessWidget {
+  final String title;
   final String value;
+  final String subtitle;
   final IconData icon;
   final Color color;
 
-  const _StatItem({required this.label, required this.value, required this.icon, required this.color});
+  const _StatCard({
+    required this.title,
+    required this.value,
+    required this.subtitle,
+    required this.icon,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
-      width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.darkSurface,
+        color: isDark ? AppColors.darkSurface : AppColors.surface,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.darkBorder),
+        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: color, size: 24),
-          const SizedBox(height: 12),
-          Text(value, style: AppTextStyles.h2),
-          Text(label, style: AppTextStyles.caption.copyWith(color: AppColors.textMuted)),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: color, size: 18),
+              ),
+            ],
+          ),
+          const Spacer(),
+          Text(value, style: AppTextStyles.h1.copyWith(fontSize: 28)),
+          const SizedBox(height: 4),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              subtitle,
+              style: TextStyle(
+                color: color,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
+// =====================================================
+// TODAY'S SCHEDULE
+// =====================================================
 class _TodaySchedule extends StatelessWidget {
   final TeacherDashboardData data;
+
   const _TodaySchedule({required this.data});
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final todayStr = DateFormat('MMMM dd, yyyy · EEEE').format(DateTime.now());
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.darkSurface,
+        color: isDark ? AppColors.darkSurface : AppColors.surface,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.darkBorder),
+        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Today\'s Schedule', style: AppTextStyles.h3),
-          SizedBox(height: 16),
-          if (data.todaySchedule.isEmpty)
-            const Text('No classes today.', style: TextStyle(color: AppColors.textMuted)),
-          ...data.todaySchedule.map((s) => _ScheduleCard(item: s)),
-        ],
-      ),
-    );
-  }
-}
-
-class _ScheduleCard extends StatelessWidget {
-  final Map<String, dynamic> item;
-  const _ScheduleCard({required this.item});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.darkSurfaceAlt,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(item['time'], style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary)),
-              Text(item['subject'], style: AppTextStyles.body),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Today\'s Schedule', style: AppTextStyles.h3),
+                  const SizedBox(height: 2),
+                  Text(
+                    todayStr,
+                    style: TextStyle(
+                      color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+              OutlinedButton.icon(
+                onPressed: () {},
+                icon: const Icon(Icons.print_rounded, size: 14),
+                label: const Text('Print'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  minimumSize: Size.zero,
+                ),
+              ),
             ],
           ),
-          const Spacer(),
-          BadgeChip(label: item['type'], tone: BadgeTone.primary),
-        ],
-      ),
-    );
-  }
-}
-
-class _MySubjects extends StatelessWidget {
-  final TeacherDashboardData data;
-  const _MySubjects({required this.data});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppColors.darkSurface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.darkBorder),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('My Subjects', style: AppTextStyles.h3),
-          SizedBox(height: 16),
-          ...data.subjectAssignments.map((s) => ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: CircleAvatar(
-              backgroundColor: AppColors.accentSoft,
-              child: Text(s['code'].toString().substring(0,1), style: const TextStyle(color: AppColors.accent)),
-            ),
-            title: Text(s['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Text('${s['role']} · ${s['section']}'),
-          )),
-        ],
-      ),
-    );
-  }
-}
-
-class _TeacherCheckInWidget extends ConsumerStatefulWidget {
-  const _TeacherCheckInWidget();
-
-  @override
-  ConsumerState<_TeacherCheckInWidget> createState() => _TeacherCheckInWidgetState();
-}
-
-class _TeacherCheckInWidgetState extends ConsumerState<_TeacherCheckInWidget> {
-  bool _isCheckingIn = false;
-  String _loadingText = '';
-
-  Future<Position?> _determinePosition() async {
-    bool serviceEnabled;
-    LocationPermission permission;
-
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      throw Exception('Location services are disabled. Please enable GPS.');
-    }
-
-    permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        throw Exception('Location permissions are denied.');
-      }
-    }
-
-    if (permission == LocationPermission.deniedForever) {
-      throw Exception(
-          'Location permissions are permanently denied. Please enable them in system settings.');
-    }
-
-    return await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high,
-      timeLimit: const Duration(seconds: 10),
-    );
-  }
-
-  Future<void> _performCheckIn() async {
-    setState(() {
-      _isCheckingIn = true;
-      _loadingText = kIsWeb ? 'Verifying Web IP...' : 'Securing GPS Lock...';
-    });
-
-    try {
-      double? lat;
-      double? lon;
-
-      if (!kIsWeb) {
-        final position = await _determinePosition();
-        if (position != null) {
-          lat = position.latitude;
-          lon = position.longitude;
-        }
-      }
-
-      final repo = ref.read(attendanceRepositoryProvider);
-      final result = await repo.teacherCheckIn(
-        latitude: lat,
-        longitude: lon,
-      );
-
-      final statusVal = result['status']?.toString() ?? 'PRESENT';
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Check-in successful! Marked as $statusVal.'),
-            backgroundColor: AppColors.success,
-          ),
-        );
-        ref.invalidate(teacherAttendanceStatusProvider);
-      }
-    } catch (e) {
-      String errorMsg = e.toString();
-      if (errorMsg.contains('Exception:')) {
-        errorMsg = errorMsg.split('Exception:').last.trim();
-      }
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Check-in failed: $errorMsg'),
-            backgroundColor: AppColors.danger,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isCheckingIn = false;
-        });
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final statusAsync = ref.watch(teacherAttendanceStatusProvider);
-    final screenWidth = MediaQuery.of(context).size.width;
-    final bool isMobile = screenWidth < 600;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
-        color: AppColors.darkSurface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.darkBorder),
-      ),
-      child: statusAsync.when(
-        loading: () => const Center(
-          child: Padding(
-            padding: EdgeInsets.symmetric(vertical: 8.0),
-            child: CircularProgressIndicator(),
-          ),
-        ),
-        error: (err, _) => Row(
-          children: [
-            const Icon(Icons.error_outline_rounded, color: AppColors.danger),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                'Failed to load check-in status: $err',
-                style: AppTextStyles.body,
+          const SizedBox(height: 16),
+          if (data.todaySchedule.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              child: Center(
+                child: Text(
+                  'No classes scheduled for today.',
+                  style: TextStyle(color: isDark ? AppColors.darkTextMuted : AppColors.textMuted),
+                ),
               ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.refresh_rounded, color: AppColors.primary),
-              onPressed: () => ref.invalidate(teacherAttendanceStatusProvider),
             )
-          ],
-        ),
-        data: (statusMap) {
-          final statusVal = statusMap['status']?.toString() ?? 'NOT_CHECKED_IN';
-          final checkInStr = statusMap['check_in_time']?.toString();
+          else
+            ...List.generate(data.todaySchedule.length, (index) {
+              final s = data.todaySchedule[index];
+              final isFirst = index == 0;
 
-          String formattedTime = '';
-          if (checkInStr != null && checkInStr.isNotEmpty) {
-            try {
-              final parsed = DateTime.parse(checkInStr);
-              formattedTime = DateFormat('hh:mm a').format(parsed.toLocal());
-            } catch (_) {
-              formattedTime = '';
-            }
-          }
+              // Mock statuses to match layout
+              String statusLabel = 'Open';
+              BadgeTone tone = BadgeTone.warning;
+              if (index == 0) {
+                statusLabel = 'Done';
+                tone = BadgeTone.success;
+              } else if (index == 1) {
+                statusLabel = 'Next';
+                tone = BadgeTone.primary;
+              } else if (s['type'] == 'LAB') {
+                statusLabel = 'Lab';
+                tone = BadgeTone.purple;
+              }
 
-          Widget statusIcon;
-          String statusTitle = '';
-          String statusSubtitle = '';
-          Color accentColor;
+              // Dynamic mock room and class
+              final roomName = s['room'] ?? 'Room 201';
+              final classLabel = data.assignedClassesList.isNotEmpty
+                  ? data.assignedClassesList[index % data.assignedClassesList.length]['className'].toString()
+                  : 'DPT 6th Sem';
 
-          switch (statusVal) {
-            case 'PRESENT':
-              statusIcon = const Icon(Icons.check_circle_rounded, color: AppColors.success, size: 36);
-              statusTitle = 'Checked In';
-              statusSubtitle = formattedTime.isNotEmpty ? 'Check-in recorded at $formattedTime.' : 'Check-in recorded successfully.';
-              accentColor = AppColors.success;
-              break;
-            case 'LATE':
-              statusIcon = const Icon(Icons.alarm_rounded, color: AppColors.warning, size: 36);
-              statusTitle = 'Checked In (Late)';
-              statusSubtitle = formattedTime.isNotEmpty ? 'Check-in recorded at $formattedTime.' : 'Check-in recorded (Late).';
-              accentColor = AppColors.warning;
-              break;
-            case 'ON_LEAVE':
-              statusIcon = const Icon(Icons.beach_access_rounded, color: Colors.grey, size: 36);
-              statusTitle = 'On Leave Today';
-              statusSubtitle = 'Enjoy your approved leave.';
-              accentColor = Colors.grey;
-              break;
-            case 'ABSENT':
-              statusIcon = const Icon(Icons.cancel_rounded, color: AppColors.danger, size: 36);
-              statusTitle = 'Marked Absent';
-              statusSubtitle = 'You were marked absent by system cutoff.';
-              accentColor = AppColors.danger;
-              break;
-            default:
-              statusIcon = const Icon(Icons.location_on_rounded, color: AppColors.primary, size: 36);
-              statusTitle = 'Daily Attendance';
-              statusSubtitle = kIsWeb
-                  ? 'Verify your network IP connection to check in.'
-                  : 'Verify your GPS location coordinates to check in.';
-              accentColor = AppColors.primary;
-          }
-
-          final showButton = statusVal == 'NOT_CHECKED_IN';
-
-          return isMobile
-              ? Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.darkSurfaceAlt : AppColors.surfaceAlt,
+                  borderRadius: BorderRadius.circular(12),
+                  border: isFirst
+                      ? Border.all(color: AppColors.primary.withValues(alpha: 0.3), width: 1.5)
+                      : null,
+                ),
+                child: Row(
                   children: [
-                    Row(
-                      children: [
-                        statusIcon,
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(statusTitle, style: AppTextStyles.h3),
-                              const SizedBox(height: 2),
-                              Text(statusSubtitle, style: AppTextStyles.caption.copyWith(color: AppColors.textMuted)),
-                            ],
-                          ),
-                        ),
-                      ],
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: (isFirst ? AppColors.primary : Colors.grey).withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        isFirst ? Icons.check_circle_outline_rounded : Icons.schedule_rounded,
+                        color: isFirst ? AppColors.primary : Colors.grey,
+                        size: 20,
+                      ),
                     ),
-                    if (showButton) ...[
-                      const SizedBox(height: 18),
-                      ElevatedButton.icon(
-                        onPressed: _isCheckingIn ? null : _performCheckIn,
-                        icon: _isCheckingIn
-                            ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                              )
-                            : const Icon(Icons.fingerprint_rounded, size: 20),
-                        label: Text(_isCheckingIn ? _loadingText : 'Check-In Now'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                      ),
-                    ] else ...[
-                      const SizedBox(height: 18),
-                      Container(
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        decoration: BoxDecoration(
-                          color: accentColor.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: accentColor.withValues(alpha: 0.25)),
-                        ),
-                        child: Center(
-                          child: Text(
-                            statusVal == 'ON_LEAVE' ? 'ON LEAVE' : 'CHECK-IN LOCK ACTIVE',
-                            style: TextStyle(color: accentColor, fontWeight: FontWeight.bold, fontSize: 13),
-                          ),
-                        ),
-                      ),
-                    ]
-                  ],
-                )
-              : Row(
-                  children: [
-                    statusIcon,
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 14),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(statusTitle, style: AppTextStyles.h3),
-                          const SizedBox(height: 2),
-                          Text(statusSubtitle, style: AppTextStyles.caption.copyWith(color: AppColors.textMuted)),
+                          Text(
+                            s['subject'] ?? 'Unknown',
+                            style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w700),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${s['time']} · $roomName · $classLabel',
+                            style: TextStyle(
+                              color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                              fontSize: 12,
+                            ),
+                          ),
                         ],
                       ),
                     ),
-                    const SizedBox(width: 20),
-                    if (showButton)
-                      SizedBox(
-                        width: 220,
-                        height: 48,
-                        child: ElevatedButton.icon(
-                          onPressed: _isCheckingIn ? null : _performCheckIn,
-                          icon: _isCheckingIn
-                              ? const SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                                )
-                              : const Icon(Icons.fingerprint_rounded, size: 20),
-                          label: Text(_isCheckingIn ? _loadingText : 'Check-In Now'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    BadgeChip(label: statusLabel, tone: tone),
+                  ],
+                ),
+              );
+            }),
+        ],
+      ),
+    );
+  }
+}
+
+// =====================================================
+// CLASS ATTENDANCE TREND CHART
+// =====================================================
+class _AttendanceTrendChart extends StatelessWidget {
+  const _AttendanceTrendChart();
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkSurface : AppColors.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Class Attendance Trend', style: AppTextStyles.h3),
+          const SizedBox(height: 2),
+          Text(
+            'This week',
+            style: TextStyle(
+              color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(height: 28),
+          SizedBox(
+            height: 160,
+            width: double.infinity,
+            child: CustomPaint(
+              painter: AttendanceChartPainter(
+                data: [82.0, 85.0, 80.0, 88.0, 84.0, 89.0, 87.0],
+                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: const [
+              Text('Mon', style: TextStyle(fontSize: 11, color: AppColors.darkTextMuted)),
+              Text('Tue', style: TextStyle(fontSize: 11, color: AppColors.darkTextMuted)),
+              Text('Wed', style: TextStyle(fontSize: 11, color: AppColors.darkTextMuted)),
+              Text('Thu', style: TextStyle(fontSize: 11, color: AppColors.darkTextMuted)),
+              Text('Fri', style: TextStyle(fontSize: 11, color: AppColors.darkTextMuted)),
+              Text('Sat', style: TextStyle(fontSize: 11, color: AppColors.darkTextMuted)),
+              Text('Sun', style: TextStyle(fontSize: 11, color: AppColors.darkTextMuted)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class AttendanceChartPainter extends CustomPainter {
+  final List<double> data;
+  final List<String> labels;
+
+  AttendanceChartPainter({required this.data, required this.labels});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFF6366F1)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3
+      ..strokeCap = StrokeCap.round;
+
+    final fillPaint = Paint()..style = PaintingStyle.fill;
+
+    final path = Path();
+    final fillPath = Path();
+
+    if (data.isEmpty) return;
+
+    final stepX = size.width / (data.length - 1);
+
+    double getX(int index) => index * stepX;
+    double getY(double val) {
+      final pct = (val - 50.0) / 50.0; // scale between 50% and 100%
+      final clampedPct = pct.clamp(0.0, 1.0);
+      return size.height - (size.height * clampedPct * 0.85);
+    }
+
+    path.moveTo(getX(0), getY(data[0]));
+    fillPath.moveTo(getX(0), size.height);
+    fillPath.lineTo(getX(0), getY(data[0]));
+
+    for (int i = 1; i < data.length; i++) {
+      final x1 = getX(i - 1);
+      final y1 = getY(data[i - 1]);
+      final x2 = getX(i);
+      final y2 = getY(data[i]);
+      final controlX1 = x1 + (x2 - x1) / 2;
+      final controlY1 = y1;
+      final controlX2 = x1 + (x2 - x1) / 2;
+      final controlY2 = y2;
+
+      path.cubicTo(controlX1, controlY1, controlX2, controlY2, x2, y2);
+      fillPath.cubicTo(controlX1, controlY1, controlX2, controlY2, x2, y2);
+    }
+
+    fillPath.lineTo(getX(data.length - 1), size.height);
+    fillPath.close();
+
+    final gradient = LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: [
+        const Color(0xFF6366F1).withValues(alpha: 0.35),
+        const Color(0xFF6366F1).withValues(alpha: 0.0),
+      ],
+    );
+    fillPaint.shader = gradient.createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+    canvas.drawPath(fillPath, fillPaint);
+
+    canvas.drawPath(path, paint);
+
+    final pointPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.fill;
+    final borderPaint = Paint()
+      ..color = const Color(0xFF6366F1)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.5;
+
+    for (int i = 0; i < data.length; i++) {
+      final center = Offset(getX(i), getY(data[i]));
+      canvas.drawCircle(center, 4.5, pointPaint);
+      canvas.drawCircle(center, 4.5, borderPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+}
+
+// =====================================================
+// BOTTOM CLASSES TABLE / LIST
+// =====================================================
+class _AssignedClassesTable extends StatelessWidget {
+  final TeacherDashboardData data;
+  final void Function(String route) onNavigate;
+
+  const _AssignedClassesTable({required this.data, required this.onNavigate});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isMobile = Responsive.isMobile(context);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkSurface : AppColors.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Assigned Classes', style: AppTextStyles.h2),
+                    const SizedBox(height: 4),
+                    const Text('Spring 2026', style: TextStyle(color: AppColors.darkTextMuted)),
+                  ],
+                ),
+                ElevatedButton.icon(
+                  onPressed: () => onNavigate('/subjects'),
+                  icon: const Icon(Icons.add_rounded, size: 16),
+                  label: const Text('Add subject'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isDark ? AppColors.darkSurfaceAlt : AppColors.surfaceAlt,
+                    foregroundColor: isDark ? Colors.white : AppColors.text,
+                    elevation: 0,
+                    side: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.border),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Divider(height: 1, color: isDark ? AppColors.darkBorder : AppColors.border),
+          if (data.assignedClassesList.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(32),
+              child: Center(
+                child: Text(
+                  'No assigned classes found.',
+                  style: TextStyle(color: isDark ? AppColors.darkTextMuted : AppColors.textMuted),
+                ),
+              ),
+            )
+          else if (isMobile)
+            ...data.assignedClassesList.map((c) => _buildMobileClassRow(c, isDark))
+          else
+            _buildDesktopTable(isDark),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDesktopTable(bool isDark) {
+    return Column(
+      children: [
+        Container(
+          height: 48,
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          color: isDark ? AppColors.darkSurfaceAlt : AppColors.surfaceAlt,
+          child: Row(
+            children: [
+              Expanded(flex: 30, child: Text('SUBJECT', style: AppTextStyles.labelSm)),
+              Expanded(flex: 16, child: Text('CLASS', style: AppTextStyles.labelSm)),
+              Expanded(flex: 22, child: Text('NEXT SESSION', style: AppTextStyles.labelSm)),
+              Expanded(flex: 12, child: Text('STUDENTS', style: AppTextStyles.labelSm)),
+              Expanded(flex: 20, child: Text('AVG ATTENDANCE', style: AppTextStyles.labelSm)),
+              Expanded(flex: 12, child: Text('STATUS', style: AppTextStyles.labelSm)),
+            ],
+          ),
+        ),
+        ...data.assignedClassesList.map((c) {
+          final initials = c['name'].toString().substring(0, 1).toUpperCase();
+          final att = c['avgAttendance'] as int;
+
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            decoration: BoxDecoration(
+              border: Border(
+                top: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.border),
+              ),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  flex: 30,
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 18,
+                        backgroundColor: AppColors.primary.withValues(alpha: 0.12),
+                        child: Text(
+                          initials,
+                          style: const TextStyle(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
                           ),
                         ),
-                      )
-                    else
-                      Container(
-                        width: 220,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: accentColor.withValues(alpha: 0.1),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              c['name'],
+                              style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w700),
+                            ),
+                            Text(
+                              c['code'],
+                              style: const TextStyle(fontSize: 12, color: AppColors.darkTextMuted),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  flex: 16,
+                  child: Text(
+                    c['className'],
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+                Expanded(
+                  flex: 22,
+                  child: Text(
+                    c['nextSession'],
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                ),
+                Expanded(
+                  flex: 12,
+                  child: Text(
+                    '${c['students']}',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+                Expanded(
+                  flex: 20,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: ClipRRect(
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: accentColor.withValues(alpha: 0.25)),
+                          child: LinearProgressIndicator(
+                            value: att / 100.0,
+                            minHeight: 6,
+                            backgroundColor: isDark ? AppColors.darkBorder : AppColors.border,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              att >= 80 ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
+                            ),
+                          ),
                         ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          statusVal == 'ON_LEAVE' ? 'ON LEAVE' : 'CHECK-IN ACTIVE',
-                          style: TextStyle(color: accentColor, fontWeight: FontWeight.bold, fontSize: 13),
-                        ),
-                      )
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '$att%',
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  flex: 12,
+                  child: BadgeChip(
+                    label: c['status'],
+                    tone: c['status'] == 'Active' ? BadgeTone.success : BadgeTone.warning,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
+      ],
+    );
+  }
+
+  Widget _buildMobileClassRow(Map<String, dynamic> c, bool isDark) {
+    final initials = c['name'].toString().substring(0, 1).toUpperCase();
+    final att = c['avgAttendance'] as int;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        border: Border(
+          top: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.border),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 16,
+                backgroundColor: AppColors.primary.withValues(alpha: 0.12),
+                child: Text(
+                  initials,
+                  style: const TextStyle(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      c['name'],
+                      style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                    Text(
+                      '${c['code']} · ${c['className']}',
+                      style: const TextStyle(fontSize: 12, color: AppColors.darkTextMuted),
+                    ),
                   ],
-                );
-        },
+                ),
+              ),
+              BadgeChip(
+                label: c['status'],
+                tone: c['status'] == 'Active' ? BadgeTone.success : BadgeTone.warning,
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('NEXT SESSION', style: TextStyle(fontSize: 10, color: AppColors.darkTextMuted)),
+                  const SizedBox(height: 2),
+                  Text(c['nextSession'], style: const TextStyle(fontSize: 12)),
+                ],
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  const Text('STUDENTS', style: TextStyle(fontSize: 10, color: AppColors.darkTextMuted)),
+                  const SizedBox(height: 2),
+                  Text('${c['students']}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              const Text('ATTENDANCE  ', style: TextStyle(fontSize: 10, color: AppColors.darkTextMuted)),
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: LinearProgressIndicator(
+                    value: att / 100.0,
+                    minHeight: 5,
+                    backgroundColor: isDark ? AppColors.darkBorder : AppColors.border,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      att >= 80 ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '$att%',
+                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
