@@ -16,6 +16,7 @@ import 'package:cims/features/admin/subjects/providers/subject_provider.dart';
 import 'package:cims/features/admin/programs/providers/program_provider.dart';
 import 'package:cims/features/admin/programs/models/program_model.dart';
 import 'package:cims/features/admin/staff/providers/staff_provider.dart';
+import 'package:cims/features/admin/staff/models/staff_api_model.dart';
 import 'package:cims/features/admin/sessions/providers/session_provider.dart';
 import 'package:cims/core/utils/csv_export_helper.dart' as csv_helper;
 
@@ -113,12 +114,19 @@ class _SubjectsScreenState extends ConsumerState<SubjectsScreen> {
   List<SubjectModel> _filteredFromApi(
     List<SubjectApiModel> apiList,
     List<ProgramModel>? programs,
+    StaffApiModel? currentStaff,
   ) {
-    final subjects = apiList.map((api) {
+    var subjects = apiList.map((api) {
       final matches = programs?.where((p) => p.id == api.program?.id);
       final prog = (matches != null && matches.isNotEmpty) ? matches.first : null;
       return SubjectModel.fromApi(api, program: prog);
     }).toList();
+
+    if (AppSession.currentRole == 'teacher' && currentStaff != null) {
+      subjects = subjects
+          .where((s) => s.apiModel.assignedTeacher?.id == currentStaff.id)
+          .toList();
+    }
 
     return subjects.where((subject) {
       if (_statusFilter == 'Practical Only' && !subject.practical) {
@@ -212,6 +220,7 @@ class _SubjectsScreenState extends ConsumerState<SubjectsScreen> {
   Widget build(BuildContext context) {
     final asyncSubjects = ref.watch(subjectsListProvider);
     final asyncPrograms = ref.watch(programsProvider);
+    final asyncStaff = ref.watch(currentStaffProvider);
 
     return AppScaffold(
       title: 'Subjects',
@@ -223,7 +232,18 @@ class _SubjectsScreenState extends ConsumerState<SubjectsScreen> {
         skipLoadingOnReload: true,
         data: (apiList) {
           final programs = asyncPrograms.value;
-          final filtered = _filteredFromApi(apiList, programs);
+          final currentStaff = asyncStaff.value;
+
+          if (AppSession.currentRole == 'teacher' && asyncStaff.isLoading) {
+            return const Center(
+              child: Padding(
+                padding: EdgeInsets.all(32),
+                child: CircularProgressIndicator(),
+              ),
+            );
+          }
+
+          final filtered = _filteredFromApi(apiList, programs, currentStaff);
 
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -450,12 +470,14 @@ class _SubjectsDesktopToolbar extends StatelessWidget {
           icon: const Icon(Icons.download_rounded),
           label: const Text('Export'),
         ),
-        const SizedBox(width: 16),
-        ElevatedButton.icon(
-          onPressed: onCreate,
-          icon: const Icon(Icons.add_rounded),
-          label: const Text('Add Subject'),
-        ),
+        if (AppSession.currentRole != 'teacher') ...[
+          const SizedBox(width: 16),
+          ElevatedButton.icon(
+            onPressed: onCreate,
+            icon: const Icon(Icons.add_rounded),
+            label: const Text('Add Subject'),
+          ),
+        ],
       ],
     );
   }
@@ -518,14 +540,16 @@ class _SubjectsMobileToolbar extends StatelessWidget {
                 label: const Text('Export'),
               ),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: ElevatedButton.icon(
-                onPressed: onCreate,
-                icon: const Icon(Icons.add_rounded),
-                label: const Text('Add Subject'),
+            if (AppSession.currentRole != 'teacher') ...[
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: onCreate,
+                  icon: const Icon(Icons.add_rounded),
+                  label: const Text('Add Subject'),
+                ),
               ),
-            ),
+            ],
           ],
         ),
       ],
@@ -708,17 +732,19 @@ class _SubjectDesktopRow extends StatelessWidget {
                   icon: Icons.visibility_outlined,
                   onTap: onView,
                 ),
-                const SizedBox(width: 8),
-                _SubjectAction(
-                  icon: Icons.edit_outlined,
-                  onTap: onEdit,
-                ),
-                const SizedBox(width: 8),
-                _SubjectAction(
-                  icon: Icons.delete_outline_rounded,
-                  onTap: onDelete,
-                  color: AppColors.danger,
-                ),
+                if (AppSession.currentRole != 'teacher') ...[
+                  const SizedBox(width: 8),
+                  _SubjectAction(
+                    icon: Icons.edit_outlined,
+                    onTap: onEdit,
+                  ),
+                  const SizedBox(width: 8),
+                  _SubjectAction(
+                    icon: Icons.delete_outline_rounded,
+                    onTap: onDelete,
+                    color: AppColors.danger,
+                  ),
+                ],
               ],
             ),
           ),
@@ -817,18 +843,20 @@ class _SubjectMobileRow extends StatelessWidget {
                   child: const Text('View'),
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: onEdit,
-                  child: const Text('Edit'),
+              if (AppSession.currentRole != 'teacher') ...[
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: onEdit,
+                    child: const Text('Edit'),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              IconButton(
-                onPressed: onDelete,
-                icon: const Icon(Icons.delete_outline_rounded, color: AppColors.danger),
-              ),
+                const SizedBox(width: 12),
+                IconButton(
+                  onPressed: onDelete,
+                  icon: const Icon(Icons.delete_outline_rounded, color: AppColors.danger),
+                ),
+              ],
             ],
           ),
         ],
