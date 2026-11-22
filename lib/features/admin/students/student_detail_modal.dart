@@ -45,6 +45,8 @@ class _StudentDetailModalState extends ConsumerState<StudentDetailModal> {
   Widget build(BuildContext context) {
     ref.watch(sessionsListProvider); // Pre-warm sessions list
     final repo = ref.read(studentRepositoryProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Dialog(
       backgroundColor: Colors.transparent,
       insetPadding: Responsive.modalInsetPadding(context),
@@ -53,9 +55,18 @@ class _StudentDetailModalState extends ConsumerState<StudentDetailModal> {
         constraints: const BoxConstraints(maxWidth: 750),
         height: MediaQuery.of(context).size.height * 0.85,
         decoration: BoxDecoration(
-          color: AppColors.darkSurface,
+          color: isDark ? AppColors.darkSurface : Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.darkBorder),
+          border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
+          boxShadow: isDark
+              ? null
+              : [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 16,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
         ),
         child: FutureBuilder<StudentApiModel>(
           // ignore: unused_local_parameter
@@ -71,7 +82,10 @@ class _StudentDetailModalState extends ConsumerState<StudentDetailModal> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text('Failed to load student: ${snap.error}', style: const TextStyle(color: Colors.white)),
+                    Text(
+                      'Failed to load student: ${snap.error}',
+                      style: TextStyle(color: isDark ? Colors.white : AppColors.danger),
+                    ),
                     const SizedBox(height: 12),
                     FilledButton(
                       onPressed: () => Navigator.pop(context),
@@ -97,14 +111,19 @@ class _StudentDetailModalState extends ConsumerState<StudentDetailModal> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(s.fullName, style: AppTextStyles.h2),
+                              Text(
+                                s.fullName,
+                                style: AppTextStyles.h2.copyWith(
+                                  color: isDark ? Colors.white : AppColors.text,
+                                ),
+                              ),
                               const SizedBox(height: 6),
                               Row(
                                 children: [
                                   Text(
                                     s.studentIdCode,
                                     style: AppTextStyles.caption.copyWith(
-                                      color: AppColors.darkTextMuted,
+                                      color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                                     ),
                                   ),
                                   const SizedBox(width: 10),
@@ -137,18 +156,21 @@ class _StudentDetailModalState extends ConsumerState<StudentDetailModal> {
                         ),
                         IconButton(
                           onPressed: () => Navigator.pop(context),
-                          icon: const Icon(Icons.close_rounded),
+                          icon: Icon(
+                            Icons.close_rounded,
+                            color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                          ),
                         ),
                       ],
                     ),
                   ),
-                  Divider(color: AppColors.darkBorder, height: 1),
+                  Divider(color: isDark ? AppColors.darkBorder : AppColors.border, height: 1),
                   
                   // TABS BAR
                   TabBar(
                     indicatorColor: AppColors.primary,
-                    labelColor: Colors.white,
-                    unselectedLabelColor: AppColors.darkTextMuted,
+                    labelColor: isDark ? Colors.white : AppColors.primary,
+                    unselectedLabelColor: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                     labelStyle: AppTextStyles.bodySm.copyWith(fontWeight: FontWeight.bold),
                     tabs: [
                       const Tab(text: 'Details'),
@@ -157,16 +179,16 @@ class _StudentDetailModalState extends ConsumerState<StudentDetailModal> {
                       if (_isAdmin) const Tab(text: 'Actions'),
                     ],
                   ),
-                  Divider(color: AppColors.darkBorder, height: 1),
+                  Divider(color: isDark ? AppColors.darkBorder : AppColors.border, height: 1),
 
                   // TAB VIEWS
                   Expanded(
                     child: TabBarView(
                       children: [
-                        _buildDetailsTab(s),
-                        _buildHistoryTab(repo, s.id),
-                        if (_isAdmin) _buildEnrollmentsTab(s),
-                        if (_isAdmin) _buildActionsTab(s),
+                        _buildDetailsTab(s, isDark),
+                        _buildHistoryTab(repo, s.id, isDark),
+                        if (_isAdmin) _buildEnrollmentsTab(s, isDark),
+                        if (_isAdmin) _buildActionsTab(s, isDark),
                       ],
                     ),
                   ),
@@ -175,12 +197,12 @@ class _StudentDetailModalState extends ConsumerState<StudentDetailModal> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: AppColors.darkSurfaceAlt,
+                      color: isDark ? AppColors.darkSurfaceAlt : AppColors.surfaceAlt,
                       borderRadius: const BorderRadius.vertical(
                         bottom: Radius.circular(16),
                       ),
                       border: Border(
-                        top: BorderSide(color: AppColors.darkBorder),
+                        top: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.border),
                       ),
                     ),
                     child: Row(
@@ -219,7 +241,8 @@ class _StudentDetailModalState extends ConsumerState<StudentDetailModal> {
     );
   }
 
-  Widget _buildDetailsTab(StudentApiModel s) {
+  Widget _buildDetailsTab(StudentApiModel s, [bool? isDarkOverride]) {
+    final isDark = isDarkOverride ?? (Theme.of(context).brightness == Brightness.dark);
     Widget row(String label, String? value) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 8),
@@ -231,12 +254,18 @@ class _StudentDetailModalState extends ConsumerState<StudentDetailModal> {
               child: Text(
                 label,
                 style: AppTextStyles.caption.copyWith(
-                  color: AppColors.darkTextMuted,
+                  color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),
             Expanded(
-              child: Text(value ?? '—', style: AppTextStyles.body),
+              child: Text(
+                value ?? '—',
+                style: AppTextStyles.body.copyWith(
+                  color: isDark ? Colors.white : AppColors.text,
+                ),
+              ),
             ),
           ],
         ),
@@ -267,7 +296,8 @@ class _StudentDetailModalState extends ConsumerState<StudentDetailModal> {
     );
   }
 
-  Widget _buildHistoryTab(StudentRepository repo, int id) {
+  Widget _buildHistoryTab(StudentRepository repo, int id, [bool? isDarkOverride]) {
+    final isDark = isDarkOverride ?? (Theme.of(context).brightness == Brightness.dark);
     return FutureBuilder<StudentHistoryResponse>(
       future: repo.getStudentHistory(id),
       builder: (context, snap) {
@@ -278,7 +308,7 @@ class _StudentDetailModalState extends ConsumerState<StudentDetailModal> {
           return Center(
             child: Text(
               'No history log available: ${snap.error ?? "No data"}',
-              style: TextStyle(color: AppColors.darkTextMuted),
+              style: TextStyle(color: isDark ? AppColors.darkTextMuted : AppColors.textMuted),
             ),
           );
         }
@@ -288,7 +318,7 @@ class _StudentDetailModalState extends ConsumerState<StudentDetailModal> {
           return Center(
             child: Text(
               'No history records found for this student.',
-              style: TextStyle(color: AppColors.darkTextMuted),
+              style: TextStyle(color: isDark ? AppColors.darkTextMuted : AppColors.textMuted),
             ),
           );
         }
@@ -321,7 +351,7 @@ class _StudentDetailModalState extends ConsumerState<StudentDetailModal> {
                         Expanded(
                           child: Container(
                             width: 2,
-                            color: AppColors.darkBorder,
+                            color: isDark ? AppColors.darkBorder : AppColors.border,
                           ),
                         ),
                     ],
@@ -335,18 +365,29 @@ class _StudentDetailModalState extends ConsumerState<StudentDetailModal> {
                         children: [
                           Row(
                             children: [
-                              Text(title, style: AppTextStyles.body.copyWith(fontWeight: FontWeight.bold)),
+                              Text(
+                                title,
+                                style: AppTextStyles.body.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: isDark ? Colors.white : AppColors.text,
+                                ),
+                              ),
                               const SizedBox(width: 10),
                               Text(
                                 dateStr, 
-                                style: AppTextStyles.caption.copyWith(color: AppColors.darkTextMuted)
+                                style: AppTextStyles.caption.copyWith(
+                                  color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                                ),
                               ),
                             ],
                           ),
                           const SizedBox(height: 4),
                           Text(
                             'Session: ${item.session?.name ?? "N/A"}  |  Stage: ${item.stage}', 
-                            style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.bold)
+                            style: AppTextStyles.caption.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: isDark ? Colors.white70 : AppColors.text,
+                            ),
                           ),
                           if (item.remarks.isNotEmpty) ...[
                             const SizedBox(height: 6),
@@ -354,7 +395,7 @@ class _StudentDetailModalState extends ConsumerState<StudentDetailModal> {
                               item.remarks,
                               style: AppTextStyles.bodySm.copyWith(
                                 fontStyle: FontStyle.italic,
-                                color: AppColors.darkTextMuted,
+                                color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                               ),
                             ),
                           ],
@@ -371,7 +412,8 @@ class _StudentDetailModalState extends ConsumerState<StudentDetailModal> {
     );
   }
 
-  Widget _buildActionsTab(StudentApiModel s) {
+  Widget _buildActionsTab(StudentApiModel s, [bool? isDarkOverride]) {
+    final isDark = isDarkOverride ?? (Theme.of(context).brightness == Brightness.dark);
     if (s.program != null) {
       ref.watch(programStagesProvider(s.program!.id)); // Pre-warm program stages
     }
@@ -383,12 +425,17 @@ class _StudentDetailModalState extends ConsumerState<StudentDetailModal> {
         children: [
           Text(
             'Academic Lifecycle Management', 
-            style: AppTextStyles.body.copyWith(fontWeight: FontWeight.bold, color: Colors.white)
+            style: AppTextStyles.body.copyWith(
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white : AppColors.text,
+            ),
           ),
           const SizedBox(height: 6),
           Text(
             'Change status, promote stages, freeze semesters, or strike off.',
-            style: AppTextStyles.bodySm.copyWith(color: AppColors.darkTextMuted),
+            style: AppTextStyles.bodySm.copyWith(
+              color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+            ),
           ),
           const SizedBox(height: 24),
 
@@ -525,12 +572,13 @@ class _StudentDetailModalState extends ConsumerState<StudentDetailModal> {
     required Color color,
     required VoidCallback onPressed,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.darkSurfaceAlt,
+        color: isDark ? AppColors.darkSurfaceAlt : AppColors.surfaceAlt,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.darkBorder),
+        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
       ),
       child: Row(
         children: [
@@ -547,9 +595,20 @@ class _StudentDetailModalState extends ConsumerState<StudentDetailModal> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: AppTextStyles.body.copyWith(fontWeight: FontWeight.bold, color: Colors.white)),
+                Text(
+                  title,
+                  style: AppTextStyles.body.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : AppColors.text,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text(desc, style: AppTextStyles.caption.copyWith(color: AppColors.darkTextMuted)),
+                Text(
+                  desc,
+                  style: AppTextStyles.caption.copyWith(
+                    color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                  ),
+                ),
               ],
             ),
           ),
@@ -568,7 +627,8 @@ class _StudentDetailModalState extends ConsumerState<StudentDetailModal> {
     );
   }
 
-  Widget _buildEnrollmentsTab(StudentApiModel s) {
+  Widget _buildEnrollmentsTab(StudentApiModel s, [bool? isDarkOverride]) {
+    final isDark = isDarkOverride ?? (Theme.of(context).brightness == Brightness.dark);
     final enrollmentsAsync = ref.watch(studentEnrollmentsProvider(
       StudentEnrollmentsArgs(studentId: s.id),
     ));
@@ -588,14 +648,14 @@ class _StudentDetailModalState extends ConsumerState<StudentDetailModal> {
                       'Subject Enrollments',
                       style: AppTextStyles.body.copyWith(
                         fontWeight: FontWeight.w700,
-                        color: Colors.white,
+                        color: isDark ? Colors.white : AppColors.text,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       'Manage ongoing and repeat subjects',
                       style: AppTextStyles.caption.copyWith(
-                        color: AppColors.darkTextMuted,
+                        color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                       ),
                     ),
                   ],
@@ -622,7 +682,7 @@ class _StudentDetailModalState extends ConsumerState<StudentDetailModal> {
                   return Center(
                     child: Text(
                       'No subject enrollments found.',
-                      style: TextStyle(color: AppColors.darkTextMuted),
+                      style: TextStyle(color: isDark ? AppColors.darkTextMuted : AppColors.textMuted),
                     ),
                   );
                 }
@@ -644,9 +704,9 @@ class _StudentDetailModalState extends ConsumerState<StudentDetailModal> {
                       margin: const EdgeInsets.only(bottom: 12),
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: AppColors.darkSurfaceAlt,
+                        color: isDark ? AppColors.darkSurfaceAlt : AppColors.surfaceAlt,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.darkBorder),
+                        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
                       ),
                       child: Row(
                         children: [
@@ -658,14 +718,14 @@ class _StudentDetailModalState extends ConsumerState<StudentDetailModal> {
                                   subjectName,
                                   style: AppTextStyles.body.copyWith(
                                     fontWeight: FontWeight.bold,
-                                    color: Colors.white,
+                                    color: isDark ? Colors.white : AppColors.text,
                                   ),
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
                                   '$subjectCode · Session: $sessionName · Attempt #$attempt',
                                   style: AppTextStyles.caption.copyWith(
-                                    color: AppColors.darkTextMuted,
+                                    color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                                   ),
                                 ),
                               ],
@@ -701,9 +761,10 @@ class _StudentDetailModalState extends ConsumerState<StudentDetailModal> {
     Map<String, dynamic> session,
     String currentStatus,
   ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return PopupMenuButton<String>(
-      icon: const Icon(Icons.more_vert_rounded, color: Colors.white),
-      color: AppColors.darkSurface,
+      icon: Icon(Icons.more_vert_rounded, color: isDark ? Colors.white : AppColors.text),
+      color: isDark ? AppColors.darkSurface : Colors.white,
       onSelected: (action) {
         if (action == 'status') {
           _showStatusUpdateDialog(enrollmentId, student, currentStatus);
@@ -763,6 +824,7 @@ class _StudentDetailModalState extends ConsumerState<StudentDetailModal> {
   }
 
   Future<void> _showSingleEnrollDialog(StudentApiModel student) async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     int? selectedSubId;
     int? selectedSessId;
     bool loading = false;
@@ -788,18 +850,24 @@ class _StudentDetailModalState extends ConsumerState<StudentDetailModal> {
                 }
 
                 return AlertDialog(
-                  backgroundColor: AppColors.darkSurface,
-                  title: const Text('Enroll in Subject', style: TextStyle(color: Colors.white)),
+                  backgroundColor: isDark ? AppColors.darkSurface : Colors.white,
+                  title: Text(
+                    'Enroll in Subject',
+                    style: TextStyle(color: isDark ? Colors.white : AppColors.text, fontWeight: FontWeight.bold),
+                  ),
                   content: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Select Academic Session', style: TextStyle(color: AppColors.darkTextMuted)),
+                      Text(
+                        'Select Academic Session',
+                        style: TextStyle(color: isDark ? AppColors.darkTextMuted : AppColors.textMuted),
+                      ),
                       const SizedBox(height: 6),
                       sessionsAsync.when(
                         data: (list) => DropdownButtonFormField<int>(
                           value: selectedSessId,
-                          dropdownColor: Theme.of(context).brightness == Brightness.dark ? AppColors.darkSurface : AppColors.surface,
+                          dropdownColor: isDark ? AppColors.darkSurface : AppColors.surface,
                           items: list.map((s) => DropdownMenuItem<int>(
                             value: s.id,
                             child: Text(s.name),
@@ -810,12 +878,15 @@ class _StudentDetailModalState extends ConsumerState<StudentDetailModal> {
                         error: (err, _) => Text('Error: $err', style: const TextStyle(color: Colors.red)),
                       ),
                       const SizedBox(height: 16),
-                      const Text('Select Subject', style: TextStyle(color: AppColors.darkTextMuted)),
+                      Text(
+                        'Select Subject',
+                        style: TextStyle(color: isDark ? AppColors.darkTextMuted : AppColors.textMuted),
+                      ),
                       const SizedBox(height: 6),
                       subjectsAsync.when(
                         data: (list) => DropdownButtonFormField<int>(
                           value: selectedSubId,
-                          dropdownColor: Theme.of(context).brightness == Brightness.dark ? AppColors.darkSurface : AppColors.surface,
+                          dropdownColor: isDark ? AppColors.darkSurface : AppColors.surface,
                           items: list.map((s) => DropdownMenuItem<int>(
                             value: s.id,
                             child: Text('${s.name} (${s.code})'),
@@ -884,6 +955,7 @@ class _StudentDetailModalState extends ConsumerState<StudentDetailModal> {
   }
 
   Future<void> _showBulkEnrollDialog(StudentApiModel student) async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     int? selectedSessId;
     bool loading = false;
 
@@ -902,23 +974,29 @@ class _StudentDetailModalState extends ConsumerState<StudentDetailModal> {
                 }
 
                 return AlertDialog(
-                  backgroundColor: AppColors.darkSurface,
-                  title: const Text('Bulk Enrollment', style: TextStyle(color: Colors.white)),
+                  backgroundColor: isDark ? AppColors.darkSurface : Colors.white,
+                  title: Text(
+                    'Bulk Enrollment',
+                    style: TextStyle(color: isDark ? Colors.white : AppColors.text, fontWeight: FontWeight.bold),
+                  ),
                   content: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         'This will enroll ALL students at Stage ${student.currentStage} under "${student.program?.name ?? 'their program'}" in all of their stage subjects.',
-                        style: const TextStyle(color: Colors.white70),
+                        style: TextStyle(color: isDark ? Colors.white70 : AppColors.text),
                       ),
                       const SizedBox(height: 16),
-                      const Text('Select Target Session', style: TextStyle(color: AppColors.darkTextMuted)),
+                      Text(
+                        'Select Target Session',
+                        style: TextStyle(color: isDark ? AppColors.darkTextMuted : AppColors.textMuted),
+                      ),
                       const SizedBox(height: 6),
                       sessionsAsync.when(
                         data: (list) => DropdownButtonFormField<int>(
                           value: selectedSessId,
-                          dropdownColor: Theme.of(context).brightness == Brightness.dark ? AppColors.darkSurface : AppColors.surface,
+                          dropdownColor: isDark ? AppColors.darkSurface : AppColors.surface,
                           items: list.map((s) => DropdownMenuItem<int>(
                             value: s.id,
                             child: Text(s.name),
@@ -987,6 +1065,7 @@ class _StudentDetailModalState extends ConsumerState<StudentDetailModal> {
   }
 
   Future<void> _showStatusUpdateDialog(int enrollmentId, StudentApiModel student, String currentStatus) async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     String selectedStatus = currentStatus;
     final remarkCtrl = TextEditingController();
     bool loading = false;
@@ -1006,17 +1085,23 @@ class _StudentDetailModalState extends ConsumerState<StudentDetailModal> {
                 }
 
                 return AlertDialog(
-                  backgroundColor: AppColors.darkSurface,
-                  title: const Text('Update Subject Status', style: TextStyle(color: Colors.white)),
+                  backgroundColor: isDark ? AppColors.darkSurface : Colors.white,
+                  title: Text(
+                    'Update Subject Status',
+                    style: TextStyle(color: isDark ? Colors.white : AppColors.text, fontWeight: FontWeight.bold),
+                  ),
                   content: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Status', style: TextStyle(color: AppColors.darkTextMuted)),
+                      Text(
+                        'Status',
+                        style: TextStyle(color: isDark ? AppColors.darkTextMuted : AppColors.textMuted),
+                      ),
                       const SizedBox(height: 6),
                       DropdownButtonFormField<String>(
                         value: selectedStatus,
-                        dropdownColor: Theme.of(context).brightness == Brightness.dark ? AppColors.darkSurface : AppColors.surface,
+                        dropdownColor: isDark ? AppColors.darkSurface : AppColors.surface,
                         items: options.map((opt) => DropdownMenuItem<String>(
                           value: opt,
                           child: Text(opt.toUpperCase()),
@@ -1024,7 +1109,10 @@ class _StudentDetailModalState extends ConsumerState<StudentDetailModal> {
                         onChanged: (v) => setState(() => selectedStatus = v ?? currentStatus),
                       ),
                       const SizedBox(height: 16),
-                      const Text('Remarks / Notes', style: TextStyle(color: AppColors.darkTextMuted)),
+                      Text(
+                        'Remarks / Notes',
+                        style: TextStyle(color: isDark ? AppColors.darkTextMuted : AppColors.textMuted),
+                      ),
                       const SizedBox(height: 6),
                       TextField(
                          controller: remarkCtrl,
@@ -1213,6 +1301,7 @@ class _StudentDetailModalState extends ConsumerState<StudentDetailModal> {
     int? selectedSessionId;
     bool loading = false;
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     await showDialog(
       context: context,
       barrierDismissible: false,
@@ -1241,8 +1330,11 @@ class _StudentDetailModalState extends ConsumerState<StudentDetailModal> {
                 }
 
                 return AlertDialog(
-                  backgroundColor: AppColors.darkSurface,
-                  title: Text(title, style: AppTextStyles.h2),
+                  backgroundColor: isDark ? AppColors.darkSurface : Colors.white,
+                  title: Text(
+                    title,
+                    style: AppTextStyles.h2.copyWith(color: isDark ? Colors.white : AppColors.text),
+                  ),
                   content: SizedBox(
                     width: 400,
                     child: Column(
@@ -1276,7 +1368,7 @@ class _StudentDetailModalState extends ConsumerState<StudentDetailModal> {
                             }
                             return DropdownButtonFormField<int>(
                               initialValue: selectedSessionId,
-                              dropdownColor: Theme.of(context).brightness == Brightness.dark ? AppColors.darkSurface : AppColors.surface,
+                              dropdownColor: isDark ? AppColors.darkSurface : AppColors.surface,
                               items: list.map((e) => DropdownMenuItem<int>(
                                 value: e.id,
                                 child: Text(e.name),

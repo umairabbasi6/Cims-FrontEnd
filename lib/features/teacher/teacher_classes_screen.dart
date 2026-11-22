@@ -292,7 +292,10 @@ class _TeacherClassesScreenState extends ConsumerState<TeacherClassesScreen> {
                             ),
                             Text(
                               c['code'],
-                              style: const TextStyle(fontSize: 12, color: AppColors.darkTextMuted),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                              ),
                             ),
                           ],
                         ),
@@ -333,7 +336,7 @@ class _TeacherClassesScreenState extends ConsumerState<TeacherClassesScreen> {
                             minHeight: 6,
                             backgroundColor: isDark ? AppColors.darkBorder : AppColors.border,
                             valueColor: AlwaysStoppedAnimation<Color>(
-                              att >= 80 ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
+                              att >= 80 ? AppColors.success : AppColors.warning,
                             ),
                           ),
                         ),
@@ -400,7 +403,10 @@ class _TeacherClassesScreenState extends ConsumerState<TeacherClassesScreen> {
                     ),
                     Text(
                       '${c['code']} · ${c['className']}',
-                      style: const TextStyle(fontSize: 12, color: AppColors.darkTextMuted),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                      ),
                     ),
                   ],
                 ),
@@ -418,7 +424,13 @@ class _TeacherClassesScreenState extends ConsumerState<TeacherClassesScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('NEXT SESSION', style: TextStyle(fontSize: 10, color: AppColors.darkTextMuted)),
+                  Text(
+                    'NEXT SESSION',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                    ),
+                  ),
                   const SizedBox(height: 2),
                   Text(c['nextSession'], style: const TextStyle(fontSize: 12)),
                 ],
@@ -426,7 +438,13 @@ class _TeacherClassesScreenState extends ConsumerState<TeacherClassesScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  const Text('STUDENTS', style: TextStyle(fontSize: 10, color: AppColors.darkTextMuted)),
+                  Text(
+                    'STUDENTS',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                    ),
+                  ),
                   const SizedBox(height: 2),
                   Text('${c['students']}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                 ],
@@ -436,7 +454,13 @@ class _TeacherClassesScreenState extends ConsumerState<TeacherClassesScreen> {
           const SizedBox(height: 12),
           Row(
             children: [
-              const Text('ATTENDANCE  ', style: TextStyle(fontSize: 10, color: AppColors.darkTextMuted)),
+              Text(
+                'ATTENDANCE  ',
+                style: TextStyle(
+                  fontSize: 10,
+                  color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                ),
+              ),
               Expanded(
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(10),
@@ -445,7 +469,7 @@ class _TeacherClassesScreenState extends ConsumerState<TeacherClassesScreen> {
                     minHeight: 5,
                     backgroundColor: isDark ? AppColors.darkBorder : AppColors.border,
                     valueColor: AlwaysStoppedAnimation<Color>(
-                      att >= 80 ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
+                      att >= 80 ? AppColors.success : AppColors.warning,
                     ),
                   ),
                 ),

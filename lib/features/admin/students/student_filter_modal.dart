@@ -39,11 +39,20 @@ class _StudentFilterModalState extends ConsumerState<StudentFilterModal> {
       child: Container(
         width: 480,
         decoration: BoxDecoration(
-          color: isDark ? AppColors.darkSurface : AppColors.surface,
+          color: isDark ? AppColors.darkSurface : Colors.white,
           borderRadius: BorderRadius.circular(22),
           border: Border.all(
-            color: AppColors.darkBorder,
+            color: isDark ? AppColors.darkBorder : AppColors.border,
           ),
+          boxShadow: isDark
+              ? null
+              : [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 16,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -60,13 +69,15 @@ class _StudentFilterModalState extends ConsumerState<StudentFilterModal> {
                       children: [
                         Text(
                           'Filter Students',
-                          style: AppTextStyles.h2,
+                          style: AppTextStyles.h2.copyWith(
+                            color: isDark ? Colors.white : AppColors.text,
+                          ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           'Refine the student records list',
                           style: AppTextStyles.body.copyWith(
-                            color: AppColors.darkTextMuted,
+                            color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                           ),
                         ),
                       ],
@@ -74,14 +85,17 @@ class _StudentFilterModalState extends ConsumerState<StudentFilterModal> {
                   ),
                   IconButton(
                     onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close_rounded),
+                    icon: Icon(
+                      Icons.close_rounded,
+                      color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                    ),
                   ),
                 ],
               ),
             ),
             Divider(
               height: 1,
-              color: AppColors.darkBorder,
+              color: isDark ? AppColors.darkBorder : AppColors.border,
             ),
             // CONTENT
             Padding(
@@ -182,7 +196,7 @@ class _StudentFilterModalState extends ConsumerState<StudentFilterModal> {
             ),
             Divider(
               height: 1,
-              color: AppColors.darkBorder,
+              color: isDark ? AppColors.darkBorder : AppColors.border,
             ),
             // FOOTER
             Padding(

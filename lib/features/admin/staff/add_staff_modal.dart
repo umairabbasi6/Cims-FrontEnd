@@ -173,7 +173,7 @@ class _AddStaffModalState
           color: isDark ? AppColors.darkSurface : AppColors.surface,
           borderRadius: BorderRadius.circular(22),
           border: Border.all(
-            color: AppColors.darkBorder,
+            color: isDark ? AppColors.darkBorder : AppColors.border,
           ),
         ),
         child: Column(
@@ -198,7 +198,7 @@ class _AddStaffModalState
                         Text(
                           widget.isViewOnly ? 'View staff member profiles' : 'Fill the details below',
                           style: AppTextStyles.body.copyWith(
-                            color: AppColors.darkTextMuted,
+                            color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                           ),
                         ),
                       ],
@@ -215,7 +215,7 @@ class _AddStaffModalState
             ),
             Divider(
               height: 1,
-              color: AppColors.darkBorder,
+              color: isDark ? AppColors.darkBorder : AppColors.border,
             ),
             // FORM
             Flexible(
@@ -333,14 +333,14 @@ class _AddStaffModalState
             Container(
               padding: const EdgeInsets.all(22),
               decoration: BoxDecoration(
-                color: AppColors.darkSurfaceAlt,
+                color: isDark ? AppColors.darkSurfaceAlt : AppColors.surfaceAlt,
                 borderRadius: const BorderRadius.only(
                   bottomLeft: Radius.circular(22),
                   bottomRight: Radius.circular(22),
                 ),
                 border: Border(
                   top: BorderSide(
-                    color: AppColors.darkBorder,
+                    color: isDark ? AppColors.darkBorder : AppColors.border,
                   ),
                 ),
               ),
@@ -512,9 +512,12 @@ class _AddStaffModalState
   }
 
   Widget _label(String text) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Text(
       text,
-      style: AppTextStyles.label,
+      style: AppTextStyles.label.copyWith(
+        color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+      ),
     );
   }
 }

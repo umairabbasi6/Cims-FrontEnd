@@ -7,6 +7,7 @@ import 'package:printing/printing.dart';
 
 import 'package:cims/core/constants/app_colors.dart';
 import 'package:cims/core/constants/app_text_styles.dart';
+import 'package:cims/core/utils/responsive.dart';
 import 'package:cims/core/widgets/app_scaffold.dart';
 import 'package:cims/core/widgets/badge_chip.dart';
 import 'package:cims/core/widgets/stat_card.dart';
@@ -17,6 +18,8 @@ import 'package:cims/core/session/app_session.dart';
 import 'package:cims/features/admin/fees/providers/fees_api_provider.dart';
 import 'package:cims/features/admin/students/providers/student_provider.dart';
 import 'package:cims/features/admin/students/models/student_api_model.dart';
+import 'package:cims/features/admin/programs/providers/program_provider.dart';
+import 'package:cims/features/admin/sessions/providers/session_provider.dart';
 
 class FeesScreen extends ConsumerStatefulWidget {
   final void Function(String route) onNavigate;
@@ -153,6 +156,91 @@ class _FeesScreenState extends ConsumerState<FeesScreen> {
         });
       }
     }
+  }
+
+  void _showBatchInvoiceDialog() {
+    final programsAsync = ref.read(programsProvider);
+    final sessionsAsync = ref.read(sessionsProvider);
+
+    int? selectedProgramId;
+    int? selectedSessionId;
+    bool isGenerating = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDlgState) => AlertDialog(
+          title: const Text('Batch Generate Invoices'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Generate fee dues for all enrolled students in the selected program cohort using the high-performance PostgreSQL procedure.',
+                style: TextStyle(fontSize: 13),
+              ),
+              const SizedBox(height: 16),
+              programsAsync.when(
+                data: (progs) => DropdownButtonFormField<int>(
+                  value: selectedProgramId,
+                  decoration: const InputDecoration(labelText: 'Program'),
+                  items: progs.map((p) => DropdownMenuItem(value: p.id, child: Text(p.name))).toList(),
+                  onChanged: (v) => setDlgState(() => selectedProgramId = v),
+                ),
+                loading: () => const LinearProgressIndicator(),
+                error: (e, _) => Text('Error loading programs: $e'),
+              ),
+              const SizedBox(height: 14),
+              sessionsAsync.when(
+                data: (sess) => DropdownButtonFormField<int>(
+                  value: selectedSessionId,
+                  decoration: const InputDecoration(labelText: 'Academic Session'),
+                  items: sess.map((s) => DropdownMenuItem(value: s.id, child: Text(s.name))).toList(),
+                  onChanged: (v) => setDlgState(() => selectedSessionId = v),
+                ),
+                loading: () => const LinearProgressIndicator(),
+                error: (e, _) => Text('Error loading sessions: $e'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: isGenerating ? null : () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: isGenerating || selectedProgramId == null || selectedSessionId == null
+                  ? null
+                  : () async {
+                      setDlgState(() => isGenerating = true);
+                      try {
+                        final msg = await ref.read(feesRepositoryProvider).bulkGenerateFees(
+                          programId: selectedProgramId!,
+                          sessionId: selectedSessionId!,
+                        );
+                        ref.invalidate(feesDashboardProvider);
+                        if (ctx.mounted) Navigator.pop(ctx);
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(msg), backgroundColor: AppColors.success),
+                          );
+                        }
+                      } catch (e) {
+                        if (ctx.mounted) {
+                          ScaffoldMessenger.of(ctx).showSnackBar(
+                            SnackBar(content: Text('Failed: $e'), backgroundColor: AppColors.error),
+                          );
+                        }
+                      } finally {
+                        if (ctx.mounted) setDlgState(() => isGenerating = false);
+                      }
+                    },
+              child: Text(isGenerating ? 'Generating...' : 'Generate Invoices'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _selectDateRange() async {
@@ -386,9 +474,8 @@ class _FeesScreenState extends ConsumerState<FeesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final bool isMobile = screenWidth < 600;
-    final bool isTablet = screenWidth >= 600 && screenWidth < 1024;
+    final bool isMobile = Responsive.isMobile(context);
+    final bool isTablet = Responsive.isTablet(context);
 
     final dashboardAsync = ref.watch(feesDashboardProvider);
 
@@ -728,11 +815,22 @@ class _FeesScreenState extends ConsumerState<FeesScreen> {
       error: (_, __) => <PendingAssignmentItem>[],
     );
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.darkSurface,
+        color: isDark ? AppColors.darkSurface : Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.darkBorder),
+        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
+        boxShadow: isDark
+            ? null
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -749,7 +847,9 @@ class _FeesScreenState extends ConsumerState<FeesScreen> {
                       const SizedBox(height: 4),
                       Text(
                         'Assigned student fees awaiting payment',
-                        style: AppTextStyles.body.copyWith(color: AppColors.darkTextMuted),
+                        style: AppTextStyles.body.copyWith(
+                          color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                        ),
                       ),
                     ],
                   ),
@@ -757,14 +857,14 @@ class _FeesScreenState extends ConsumerState<FeesScreen> {
               ],
             ),
           ),
-          const Divider(height: 1, color: AppColors.darkBorder),
+          Divider(height: 1, color: isDark ? AppColors.darkBorder : AppColors.border),
           if (pendingList.isEmpty)
             Padding(
               padding: const EdgeInsets.all(24),
               child: Center(
                 child: Text(
                   'No pending invoices found',
-                  style: TextStyle(color: AppColors.darkTextMuted),
+                  style: TextStyle(color: isDark ? AppColors.darkTextMuted : AppColors.textMuted),
                 ),
               ),
             )
@@ -772,7 +872,9 @@ class _FeesScreenState extends ConsumerState<FeesScreen> {
             Container(
               height: 48,
               padding: const EdgeInsets.symmetric(horizontal: 14),
-              decoration: const BoxDecoration(color: AppColors.darkSurfaceAlt),
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.darkSurfaceAlt : AppColors.surfaceAlt,
+              ),
               child: Row(
                 children: [
                   _headerCell('INVOICE', 14),
@@ -793,10 +895,11 @@ class _FeesScreenState extends ConsumerState<FeesScreen> {
   }
 
   Widget _pendingAssignmentRow(PendingAssignmentItem e, {required bool isTablet}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: const BoxDecoration(
-        border: Border(top: BorderSide(color: AppColors.darkBorder)),
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.border)),
       ),
       child: Row(
         children: [
@@ -841,7 +944,7 @@ class _FeesScreenState extends ConsumerState<FeesScreen> {
                       Text(
                         e.rollNo,
                         overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.caption.copyWith(color: AppColors.darkTextMuted),
+                        style: AppTextStyles.caption.copyWith(color: isDark ? AppColors.darkTextMuted : AppColors.textMuted),
                       ),
                     ],
                   ),
@@ -993,11 +1096,22 @@ class _FeesScreenState extends ConsumerState<FeesScreen> {
       error: (_, __) => <PendingAssignmentItem>[],
     );
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.darkSurface,
+        color: isDark ? AppColors.darkSurface : Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.darkBorder),
+        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
+        boxShadow: isDark
+            ? null
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -1012,14 +1126,14 @@ class _FeesScreenState extends ConsumerState<FeesScreen> {
               ],
             ),
           ),
-          const Divider(height: 1, color: AppColors.darkBorder),
+          Divider(height: 1, color: isDark ? AppColors.darkBorder : AppColors.border),
           if (pendingList.isEmpty)
             Padding(
               padding: const EdgeInsets.all(24),
               child: Center(
                 child: Text(
                   'No pending invoices found',
-                  style: TextStyle(color: AppColors.darkTextMuted),
+                  style: TextStyle(color: isDark ? AppColors.darkTextMuted : AppColors.textMuted),
                 ),
               ),
             )
@@ -1031,10 +1145,11 @@ class _FeesScreenState extends ConsumerState<FeesScreen> {
   }
 
   Widget _pendingAssignmentMobileCard(PendingAssignmentItem e) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: const BoxDecoration(
-        border: Border(top: BorderSide(color: AppColors.darkBorder)),
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.border)),
       ),
       child: Row(
         children: [
@@ -1067,12 +1182,16 @@ class _FeesScreenState extends ConsumerState<FeesScreen> {
                 Text(
                   '${e.feeType} · ${e.invoiceNo}',
                   overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.caption.copyWith(color: AppColors.darkTextMuted),
+                  style: AppTextStyles.caption.copyWith(
+                    color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                  ),
                 ),
                 Text(
                   'Due: ${e.dueDate}',
                   overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.caption.copyWith(color: AppColors.darkTextMuted),
+                  style: AppTextStyles.caption.copyWith(
+                    color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                  ),
                 ),
               ],
             ),
@@ -1130,15 +1249,25 @@ class _FeesScreenState extends ConsumerState<FeesScreen> {
   // RECORD PAYMENT CARD
   // ─────────────────────────────────────────────
 
-
   Widget _recordPaymentCard() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isMobile = Responsive.isMobile(context);
     final studentsAsync = ref.watch(studentsListProvider);
 
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.darkSurface,
+        color: isDark ? AppColors.darkSurface : Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.darkBorder),
+        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
+        boxShadow: isDark
+            ? null
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
       ),
       child: Padding(
         padding: const EdgeInsets.all(18),
@@ -1150,7 +1279,9 @@ class _FeesScreenState extends ConsumerState<FeesScreen> {
             const SizedBox(height: 4),
             Text(
               'Generate receipt instantly',
-              style: AppTextStyles.body.copyWith(color: AppColors.darkTextMuted),
+              style: AppTextStyles.body.copyWith(
+                color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+              ),
             ),
             const SizedBox(height: 20),
             studentsAsync.when(
@@ -1193,11 +1324,13 @@ class _FeesScreenState extends ConsumerState<FeesScreen> {
                     return Align(
                       alignment: Alignment.topLeft,
                       child: Material(
-                        color: AppColors.darkSurface,
+                        color: isDark ? AppColors.darkSurface : Colors.white,
                         elevation: 4.0,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
-                          side: const BorderSide(color: AppColors.darkBorder),
+                          side: BorderSide(
+                            color: isDark ? AppColors.darkBorder : AppColors.border,
+                          ),
                         ),
                         child: Container(
                           width: 320,
@@ -1211,13 +1344,18 @@ class _FeesScreenState extends ConsumerState<FeesScreen> {
                               return ListTile(
                                 title: Text(
                                   option.fullName,
-                                  style: const TextStyle(color: Colors.white),
+                                  style: TextStyle(
+                                    color: isDark ? Colors.white : AppColors.text,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                                 subtitle: Text(
                                   option.studentIdCode.isNotEmpty
                                       ? option.studentIdCode
                                       : option.registrationNumber,
-                                  style: const TextStyle(color: AppColors.darkTextMuted),
+                                  style: TextStyle(
+                                    color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                                  ),
                                 ),
                                 onTap: () => onSelected(option),
                               );
@@ -1250,167 +1388,177 @@ class _FeesScreenState extends ConsumerState<FeesScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: _loadingAssignments
-                      ? const Center(
-                          child: Padding(
-                            padding: EdgeInsets.symmetric(vertical: 12),
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                        )
-                      : DropdownButtonFormField<Map<String, dynamic>>(
-                          value: _selectedAssignment,
-                          decoration: const InputDecoration(
-                            labelText: 'PENDING INVOICE / ASSIGNMENT',
-                          ),
-                          dropdownColor: Theme.of(context).brightness == Brightness.dark ? AppColors.darkSurface : AppColors.surface,
-                          items: _assignments.isEmpty
-                              ? [
-                                  const DropdownMenuItem<Map<String, dynamic>>(
-                                    value: null,
-                                    child: Text(
-                                      'No pending invoices found',
-                                      style: TextStyle(fontSize: 12),
-                                    ),
-                                  )
-                                ]
-                              : _assignments.map((a) {
-                                  final double totalAmount =
-                                      (num.tryParse(a['amount'].toString()) ?? 0).toDouble();
-                                  final double paidAmount =
-                                      (num.tryParse(a['paid_amount'].toString()) ?? 0).toDouble();
-                                  final double dueAmount = totalAmount - paidAmount;
-                                  final dueDate = a['due_date']?.toString() ?? '';
-
-                                  String formattedDate = '';
-                                  if (dueDate.isNotEmpty) {
-                                    try {
-                                      formattedDate = DateFormat('MMM dd, yyyy')
-                                          .format(DateTime.parse(dueDate));
-                                    } catch (_) {
-                                      formattedDate = dueDate;
-                                    }
-                                  }
-
-                                  final label =
-                                      "${a['fee_type'] ?? 'Fee'} — PKR ${NumberFormat('#,##0').format(dueAmount)} ${formattedDate.isNotEmpty ? '— Due $formattedDate' : ''}";
-
-                                  return DropdownMenuItem<Map<String, dynamic>>(
-                                    value: a,
-                                    child: SizedBox(
-                                      width: 180, // Prevent dropdown text overflow
-                                      child: Text(
-                                        label,
-                                        style: const TextStyle(fontSize: 12),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  );
-                                }).toList(),
-                          onChanged: _assignments.isEmpty
-                              ? null
-                              : (val) {
-                                  setState(() {
-                                    _selectedAssignment = val;
-                                    if (val != null) {
-                                      final double totalAmount =
-                                          (num.tryParse(val['amount'].toString()) ?? 0).toDouble();
-                                      final double paidAmount =
-                                          (num.tryParse(val['paid_amount'].toString()) ?? 0).toDouble();
-                                      final double dueAmount = totalAmount - paidAmount;
-                                      _amountCtrl.text = dueAmount.toStringAsFixed(0);
-                                    } else {
-                                      _amountCtrl.clear();
-                                    }
-                                  });
-                                },
+            Builder(
+              builder: (context) {
+                final assignmentField = _loadingAssignments
+                    ? const Center(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(vertical: 12),
+                          child: CircularProgressIndicator(strokeWidth: 2),
                         ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: TextField(
-                    controller: _amountCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'AMOUNT (PKR)',
-                      hintText: '25,000',
-                    ),
-                    keyboardType: TextInputType.number,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    value: _paymentMethod,
-                    decoration: const InputDecoration(labelText: 'PAYMENT METHOD'),
-                    dropdownColor: Theme.of(context).brightness == Brightness.dark ? AppColors.darkSurface : AppColors.surface,
-                    items: const [
-                      DropdownMenuItem(
-                        value: 'Bank',
-                        child: Text('Bank'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'Cash',
-                        child: Text('Cash'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'Online',
-                        child: Text('Online'),
-                      ),
-                    ],
-                    onChanged: (val) {
-                      if (val != null) {
-                        setState(() {
-                          _paymentMethod = val;
-                        });
-                      }
-                    },
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: TextField(
-                    controller: _dateCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'DATE',
-                      hintText: '05/08/2026',
-                      suffixIcon: Icon(Icons.calendar_today_rounded),
-                    ),
-                    onTap: () async {
-                      // Show Date Picker
-                      final picked = await showDatePicker(
-                        context: context,
-                        initialDate: DateTime.now(),
-                        firstDate: DateTime(2000),
-                        lastDate: DateTime(2100),
-                        builder: (context, child) {
-                          return Theme(
-                            data: ThemeData.dark().copyWith(
-                              colorScheme: const ColorScheme.dark(
-                                primary: AppColors.primary,
-                                onPrimary: Colors.white,
-                                surface: AppColors.darkSurface,
-                                onSurface: Colors.white,
-                              ),
-                            ),
-                            child: child!,
-                          );
-                        },
+                      )
+                    : DropdownButtonFormField<Map<String, dynamic>>(
+                        isExpanded: true,
+                        value: _selectedAssignment,
+                        decoration: const InputDecoration(
+                          labelText: 'PENDING INVOICE / ASSIGNMENT',
+                        ),
+                        dropdownColor: isDark ? AppColors.darkSurface : AppColors.surface,
+                        items: _assignments.isEmpty
+                            ? [
+                                const DropdownMenuItem<Map<String, dynamic>>(
+                                  value: null,
+                                  child: Text(
+                                    'No pending invoices found',
+                                    style: TextStyle(fontSize: 12),
+                                  ),
+                                )
+                              ]
+                            : _assignments.map((a) {
+                                final double totalAmount =
+                                    (num.tryParse(a['amount'].toString()) ?? 0).toDouble();
+                                final double paidAmount =
+                                    (num.tryParse(a['paid_amount'].toString()) ?? 0).toDouble();
+                                final double dueAmount = totalAmount - paidAmount;
+                                final dueDate = a['due_date']?.toString() ?? '';
+
+                                String formattedDate = '';
+                                if (dueDate.isNotEmpty) {
+                                  try {
+                                    formattedDate = DateFormat('MMM dd, yyyy')
+                                        .format(DateTime.parse(dueDate));
+                                  } catch (_) {
+                                    formattedDate = dueDate;
+                                  }
+                                }
+
+                                final label =
+                                    "${a['fee_type'] ?? 'Fee'} — PKR ${NumberFormat('#,##0').format(dueAmount)} ${formattedDate.isNotEmpty ? '— Due $formattedDate' : ''}";
+
+                                return DropdownMenuItem<Map<String, dynamic>>(
+                                  value: a,
+                                  child: Text(
+                                    label,
+                                    style: const TextStyle(fontSize: 12),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                );
+                              }).toList(),
+                        onChanged: _assignments.isEmpty
+                            ? null
+                            : (val) {
+                                setState(() {
+                                  _selectedAssignment = val;
+                                  if (val != null) {
+                                    final double totalAmount =
+                                        (num.tryParse(val['amount'].toString()) ?? 0).toDouble();
+                                    final double paidAmount =
+                                        (num.tryParse(val['paid_amount'].toString()) ?? 0).toDouble();
+                                    final double dueAmount = totalAmount - paidAmount;
+                                    _amountCtrl.text = dueAmount.toStringAsFixed(0);
+                                  } else {
+                                    _amountCtrl.clear();
+                                  }
+                                });
+                              },
                       );
-                      if (picked != null) {
-                        setState(() {
-                          _dateCtrl.text = DateFormat('MM/dd/yyyy').format(picked);
-                        });
-                      }
-                    },
+
+                final amountField = TextField(
+                  controller: _amountCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'AMOUNT (PKR)',
+                    hintText: '25,000',
                   ),
-                ),
-              ],
+                  keyboardType: TextInputType.number,
+                );
+
+                final paymentMethodField = DropdownButtonFormField<String>(
+                  isExpanded: true,
+                  value: _paymentMethod,
+                  decoration: const InputDecoration(labelText: 'PAYMENT METHOD'),
+                  dropdownColor: isDark ? AppColors.darkSurface : AppColors.surface,
+                  items: const [
+                    DropdownMenuItem(value: 'Bank', child: Text('Bank')),
+                    DropdownMenuItem(value: 'Cash', child: Text('Cash')),
+                    DropdownMenuItem(value: 'Online', child: Text('Online')),
+                  ],
+                  onChanged: (val) {
+                    if (val != null) {
+                      setState(() {
+                        _paymentMethod = val;
+                      });
+                    }
+                  },
+                );
+
+                final dateField = TextField(
+                  controller: _dateCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'DATE',
+                    hintText: '05/08/2026',
+                    suffixIcon: Icon(Icons.calendar_today_rounded),
+                  ),
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: DateTime.now(),
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime(2100),
+                      builder: (context, child) {
+                        return Theme(
+                          data: Theme.of(context).copyWith(
+                            colorScheme: Theme.of(context).colorScheme.copyWith(
+                              primary: AppColors.primary,
+                              surface: isDark ? AppColors.darkSurface : Colors.white,
+                            ),
+                          ),
+                          child: child!,
+                        );
+                      },
+                    );
+                    if (picked != null) {
+                      setState(() {
+                        _dateCtrl.text = DateFormat('MM/dd/yyyy').format(picked);
+                      });
+                    }
+                  },
+                );
+
+                if (isMobile) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      assignmentField,
+                      const SizedBox(height: 16),
+                      amountField,
+                      const SizedBox(height: 16),
+                      paymentMethodField,
+                      const SizedBox(height: 16),
+                      dateField,
+                    ],
+                  );
+                }
+
+                return Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(child: assignmentField),
+                        const SizedBox(width: 14),
+                        Expanded(child: amountField),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(child: paymentMethodField),
+                        const SizedBox(width: 14),
+                        Expanded(child: dateField),
+                      ],
+                    ),
+                  ],
+                );
+              },
             ),
             const SizedBox(height: 16),
             TextField(
@@ -1526,11 +1674,22 @@ class _FeesScreenState extends ConsumerState<FeesScreen> {
       error: (_, __) => <DefaulterItem>[],
     );
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.darkSurface,
+        color: isDark ? AppColors.darkSurface : Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.darkBorder),
+        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
+        boxShadow: isDark
+            ? null
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
       ),
       child: Padding(
         padding: const EdgeInsets.all(18),
@@ -1549,14 +1708,14 @@ class _FeesScreenState extends ConsumerState<FeesScreen> {
                       Text(
                         'Outstanding balance · current session',
                         style: AppTextStyles.body
-                            .copyWith(color: AppColors.darkTextMuted),
+                            .copyWith(color: isDark ? AppColors.darkTextMuted : AppColors.textMuted),
                       ),
                     ],
                   ),
                 ),
-                const Icon(
+                Icon(
                   Icons.chevron_right_rounded,
-                  color: AppColors.darkTextMuted,
+                  color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                 ),
               ],
             ),
@@ -1567,7 +1726,7 @@ class _FeesScreenState extends ConsumerState<FeesScreen> {
                 child: Center(
                   child: Text(
                     'No defaulters found',
-                    style: TextStyle(color: AppColors.darkTextMuted),
+                    style: TextStyle(color: isDark ? AppColors.darkTextMuted : AppColors.textMuted),
                   ),
                 ),
               )
@@ -1580,6 +1739,7 @@ class _FeesScreenState extends ConsumerState<FeesScreen> {
   }
 
   Widget _defaulterRow(DefaulterItem e) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.only(bottom: 18),
       child: Row(
@@ -1615,7 +1775,7 @@ class _FeesScreenState extends ConsumerState<FeesScreen> {
                   '${e.rollNo} · ${e.overdue}',
                   overflow: TextOverflow.ellipsis, // ✅
                   style: AppTextStyles.caption
-                      .copyWith(color: AppColors.darkTextMuted),
+                      .copyWith(color: isDark ? AppColors.darkTextMuted : AppColors.textMuted),
                 ),
               ],
             ),
@@ -1712,11 +1872,22 @@ class _FeesScreenState extends ConsumerState<FeesScreen> {
       error: (_, __) => <TransactionItem>[],
     );
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.darkSurface,
+        color: isDark ? AppColors.darkSurface : Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.darkBorder),
+        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
+        boxShadow: isDark
+            ? null
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min, // ✅
@@ -1734,7 +1905,7 @@ class _FeesScreenState extends ConsumerState<FeesScreen> {
                       Text(
                         'All payment activity',
                         style: AppTextStyles.body
-                            .copyWith(color: AppColors.darkTextMuted),
+                            .copyWith(color: isDark ? AppColors.darkTextMuted : AppColors.textMuted),
                       ),
                     ],
                   ),
@@ -1765,6 +1936,11 @@ class _FeesScreenState extends ConsumerState<FeesScreen> {
                           : 'Filter Dates'
                       ),
                     ),
+                    OutlinedButton.icon(
+                      onPressed: _showBatchInvoiceDialog,
+                      icon: const Icon(Icons.flash_on_rounded),
+                      label: const Text('Batch Invoices'),
+                    ),
                     ElevatedButton.icon(
                       onPressed: () {
                         showResponsiveModal(
@@ -1780,14 +1956,14 @@ class _FeesScreenState extends ConsumerState<FeesScreen> {
               ],
             ),
           ),
-          const Divider(height: 1, color: AppColors.darkBorder),
+          Divider(height: 1, color: isDark ? AppColors.darkBorder : AppColors.border),
           if (transactionsList.isEmpty)
             Padding(
               padding: const EdgeInsets.all(24),
               child: Center(
                 child: Text(
                   'No recent transactions found',
-                  style: TextStyle(color: AppColors.darkTextMuted),
+                  style: TextStyle(color: isDark ? AppColors.darkTextMuted : AppColors.textMuted),
                 ),
               ),
             )
@@ -1796,7 +1972,9 @@ class _FeesScreenState extends ConsumerState<FeesScreen> {
             Container(
               height: 48,
               padding: const EdgeInsets.symmetric(horizontal: 14),
-              decoration: const BoxDecoration(color: AppColors.darkSurfaceAlt),
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.darkSurfaceAlt : AppColors.surfaceAlt,
+              ),
               child: Row(
                 children: [
                   _headerCell('RECEIPT', 16),
@@ -1813,15 +1991,18 @@ class _FeesScreenState extends ConsumerState<FeesScreen> {
             // Pagination controls
             Container(
               padding: const EdgeInsets.all(16),
-              decoration: const BoxDecoration(
-                border: Border(top: BorderSide(color: AppColors.darkBorder)),
+              decoration: BoxDecoration(
+                border: Border(top: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.border)),
               ),
               child: Row(
                 children: [
                   // Rows per page dropdown
-                  const Text(
+                  Text(
                     'Show',
-                    style: TextStyle(color: AppColors.darkTextMuted, fontSize: 14),
+                    style: TextStyle(
+                      color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                      fontSize: 14,
+                    ),
                   ),
                   const SizedBox(width: 8),
                   Builder(
@@ -1860,9 +2041,12 @@ class _FeesScreenState extends ConsumerState<FeesScreen> {
                     }
                   ),
                   const SizedBox(width: 8),
-                  const Text(
+                  Text(
                     'per page',
-                    style: TextStyle(color: AppColors.darkTextMuted, fontSize: 14),
+                    style: TextStyle(
+                      color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                      fontSize: 14,
+                    ),
                   ),
                   const Spacer(),
                   // Page navigation
@@ -1876,13 +2060,19 @@ class _FeesScreenState extends ConsumerState<FeesScreen> {
                         : null,
                     icon: const Icon(Icons.chevron_left, size: 20),
                     style: IconButton.styleFrom(
-                      foregroundColor: _currentPage > 1 ? Colors.white : AppColors.darkTextMuted,
+                      foregroundColor: _currentPage > 1
+                          ? (isDark ? Colors.white : AppColors.text)
+                          : (isDark ? AppColors.darkTextMuted : AppColors.textMuted),
                     ),
                   ),
                   const SizedBox(width: 8),
                   Text(
                     'Page $_currentPage',
-                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                    style: TextStyle(
+                      color: isDark ? Colors.white : AppColors.text,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   const SizedBox(width: 8),
                   IconButton(
@@ -1895,7 +2085,9 @@ class _FeesScreenState extends ConsumerState<FeesScreen> {
                         : null,
                     icon: const Icon(Icons.chevron_right, size: 20),
                     style: IconButton.styleFrom(
-                      foregroundColor: transactionsList.length >= _rowsPerPage ? Colors.white : AppColors.darkTextMuted,
+                      foregroundColor: transactionsList.length >= _rowsPerPage
+                          ? (isDark ? Colors.white : AppColors.text)
+                          : (isDark ? AppColors.darkTextMuted : AppColors.textMuted),
                     ),
                   ),
                 ],
@@ -1908,10 +2100,11 @@ class _FeesScreenState extends ConsumerState<FeesScreen> {
   }
 
   Widget _transactionRow(TransactionItem e, {required bool isTablet}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-      decoration: const BoxDecoration(
-        border: Border(top: BorderSide(color: AppColors.darkBorder)),
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.border)),
       ),
       child: Row(
         children: [
@@ -1958,7 +2151,7 @@ class _FeesScreenState extends ConsumerState<FeesScreen> {
                         e.rollNo,
                         overflow: TextOverflow.ellipsis,
                         style: AppTextStyles.caption
-                            .copyWith(color: AppColors.darkTextMuted),
+                            .copyWith(color: isDark ? AppColors.darkTextMuted : AppColors.textMuted),
                       ),
                     ],
                   ),
@@ -2002,6 +2195,7 @@ class _FeesScreenState extends ConsumerState<FeesScreen> {
   // ─────────────────────────────────────────────
 
   Widget _transactionsMobileList() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final transactionsAsync = ref.watch(recentTransactionsProvider(
       (DateFilterState(startDate: _startDate, endDate: _endDate), 
        PaginationState(page: _currentPage, limit: _rowsPerPage))
@@ -2078,9 +2272,18 @@ class _FeesScreenState extends ConsumerState<FeesScreen> {
 
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.darkSurface,
+        color: isDark ? AppColors.darkSurface : Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.darkBorder),
+        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
+        boxShadow: isDark
+            ? null
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -2121,14 +2324,14 @@ class _FeesScreenState extends ConsumerState<FeesScreen> {
               ],
             ),
           ),
-          const Divider(height: 1, color: AppColors.darkBorder),
+          Divider(height: 1, color: isDark ? AppColors.darkBorder : AppColors.border),
           if (transactionsList.isEmpty)
             Padding(
               padding: const EdgeInsets.all(24),
               child: Center(
                 child: Text(
                   'No recent transactions found',
-                  style: TextStyle(color: AppColors.darkTextMuted),
+                  style: TextStyle(color: isDark ? AppColors.darkTextMuted : AppColors.textMuted),
                 ),
               ),
             )
@@ -2137,15 +2340,18 @@ class _FeesScreenState extends ConsumerState<FeesScreen> {
             // Pagination controls
             Container(
               padding: const EdgeInsets.all(16),
-              decoration: const BoxDecoration(
-                border: Border(top: BorderSide(color: AppColors.darkBorder)),
+              decoration: BoxDecoration(
+                border: Border(top: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.border)),
               ),
               child: Row(
                 children: [
                   // Rows per page dropdown
-                  const Text(
+                  Text(
                     'Show',
-                    style: TextStyle(color: AppColors.darkTextMuted, fontSize: 12),
+                    style: TextStyle(
+                      color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                      fontSize: 12,
+                    ),
                   ),
                   const SizedBox(width: 6),
                   Builder(
@@ -2184,9 +2390,12 @@ class _FeesScreenState extends ConsumerState<FeesScreen> {
                     }
                   ),
                   const SizedBox(width: 6),
-                  const Text(
+                  Text(
                     'per page',
-                    style: TextStyle(color: AppColors.darkTextMuted, fontSize: 12),
+                    style: TextStyle(
+                      color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                      fontSize: 12,
+                    ),
                   ),
                   const Spacer(),
                   // Page navigation
@@ -2200,14 +2409,20 @@ class _FeesScreenState extends ConsumerState<FeesScreen> {
                         : null,
                     icon: const Icon(Icons.chevron_left, size: 18),
                     style: IconButton.styleFrom(
-                      foregroundColor: _currentPage > 1 ? Colors.white : AppColors.darkTextMuted,
+                      foregroundColor: _currentPage > 1
+                          ? (isDark ? Colors.white : AppColors.text)
+                          : (isDark ? AppColors.darkTextMuted : AppColors.textMuted),
                       padding: const EdgeInsets.all(4),
                     ),
                   ),
                   const SizedBox(width: 4),
                   Text(
                     '$_currentPage',
-                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                    style: TextStyle(
+                      color: isDark ? Colors.white : AppColors.text,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   const SizedBox(width: 4),
                   IconButton(
@@ -2220,7 +2435,9 @@ class _FeesScreenState extends ConsumerState<FeesScreen> {
                         : null,
                     icon: const Icon(Icons.chevron_right, size: 18),
                     style: IconButton.styleFrom(
-                      foregroundColor: transactionsList.length >= _rowsPerPage ? Colors.white : AppColors.darkTextMuted,
+                      foregroundColor: transactionsList.length >= _rowsPerPage
+                          ? (isDark ? Colors.white : AppColors.text)
+                          : (isDark ? AppColors.darkTextMuted : AppColors.textMuted),
                       padding: const EdgeInsets.all(4),
                     ),
                   ),
@@ -2234,10 +2451,11 @@ class _FeesScreenState extends ConsumerState<FeesScreen> {
   }
 
   Widget _transactionMobileCard(TransactionItem e) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: const BoxDecoration(
-        border: Border(top: BorderSide(color: AppColors.darkBorder)),
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.border)),
       ),
       child: Row(
         children: [
@@ -2271,7 +2489,7 @@ class _FeesScreenState extends ConsumerState<FeesScreen> {
                   '${e.receiptNo} · ${e.date}',
                   overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.caption
-                      .copyWith(color: AppColors.darkTextMuted),
+                      .copyWith(color: isDark ? AppColors.darkTextMuted : AppColors.textMuted),
                 ),
               ],
             ),

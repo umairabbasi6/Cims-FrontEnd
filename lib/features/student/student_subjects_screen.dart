@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:cims/core/constants/app_colors.dart';
 import 'package:cims/core/constants/app_text_styles.dart';
+import 'package:cims/core/utils/responsive.dart';
 import 'package:cims/core/widgets/app_scaffold.dart';
 import 'package:cims/core/widgets/badge_chip.dart';
 import 'package:cims/core/widgets/avatar.dart';
@@ -28,8 +29,8 @@ class _StudentSubjectsScreenState extends ConsumerState<StudentSubjectsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final bool isMobile = screenWidth < 600;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bool isMobile = Responsive.isMobile(context);
 
     final studentAsync = ref.watch(currentStudentProvider);
 
@@ -48,13 +49,19 @@ class _StudentSubjectsScreenState extends ConsumerState<StudentSubjectsScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.menu_book_outlined, size: 48, color: AppColors.darkTextMuted),
+                  Icon(
+                    Icons.menu_book_outlined,
+                    size: 48,
+                    color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                  ),
                   const SizedBox(height: 12),
                   Text('No subjects found', style: AppTextStyles.h3),
                   const SizedBox(height: 4),
                   Text(
                     'Sign in with a student account linked to a program.',
-                    style: const TextStyle(color: AppColors.darkTextMuted),
+                    style: TextStyle(
+                      color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                    ),
                   ),
                 ],
               ),
@@ -91,11 +98,22 @@ class _StudentSubjectsScreenState extends ConsumerState<StudentSubjectsScreen> {
 
   Widget _buildContent(
       List<SubjectApiModel> subjects, String programCode, bool isMobile) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.darkSurface,
+        color: isDark ? AppColors.darkSurface : Colors.white,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.darkBorder),
+        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
+        boxShadow: isDark
+            ? null
+            : [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.04),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
       ),
       child: Column(
         children: [
@@ -151,7 +169,7 @@ class _StudentSubjectsScreenState extends ConsumerState<StudentSubjectsScreen> {
             Container(
               padding: const EdgeInsets.symmetric(
                   horizontal: 16, vertical: 14),
-              color: AppColors.darkSurfaceAlt,
+              color: isDark ? AppColors.darkSurfaceAlt : AppColors.surfaceAlt,
               child: Row(
                 children: [
                   Expanded(
@@ -181,14 +199,14 @@ class _StudentSubjectsScreenState extends ConsumerState<StudentSubjectsScreen> {
             Padding(
               padding: const EdgeInsets.all(32),
               child: Text('No subjects match your search.',
-                  style: TextStyle(color: AppColors.darkTextMuted)),
+                  style: TextStyle(color: isDark ? AppColors.darkTextMuted : AppColors.textMuted)),
             )
           else if (isMobile)
             ListView.separated(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: subjects.length,
-              separatorBuilder: (_, __) => const Divider(height: 1, color: AppColors.darkBorder),
+              separatorBuilder: (_, __) => Divider(height: 1, color: isDark ? AppColors.darkBorder : AppColors.border),
               itemBuilder: (context, index) {
                 final subject = subjects[index];
                 final initials = subject.name.length >= 2
@@ -199,7 +217,7 @@ class _StudentSubjectsScreenState extends ConsumerState<StudentSubjectsScreen> {
                         .map((w) => w[0].toUpperCase())
                         .join()
                     : subject.name[0].toUpperCase();
-                return _buildSubjectMobileCard(subject, programCode, initials);
+                return _buildSubjectMobileCard(subject, programCode, initials, isDark);
               },
             )
           else
@@ -217,9 +235,9 @@ class _StudentSubjectsScreenState extends ConsumerState<StudentSubjectsScreen> {
                 return Container(
                   padding: const EdgeInsets.symmetric(
                       horizontal: 16, vertical: 16),
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     border: Border(
-                      top: BorderSide(color: AppColors.darkBorder),
+                      top: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.border),
                     ),
                   ),
                   child: Row(
@@ -241,9 +259,8 @@ class _StudentSubjectsScreenState extends ConsumerState<StudentSubjectsScreen> {
                                               fontWeight:
                                                   FontWeight.w700)),
                                   Text('${subject.program?.code ?? programCode} · Stage ${subject.stage}',
-                                    style: const TextStyle(
-                                        color:
-                                            AppColors.darkTextMuted),
+                                    style: TextStyle(
+                                        color: isDark ? AppColors.darkTextMuted : AppColors.textMuted),
                                   ),
                                 ],
                               ),
@@ -286,7 +303,7 @@ class _StudentSubjectsScreenState extends ConsumerState<StudentSubjectsScreen> {
     );
   }
 
-  Widget _buildSubjectMobileCard(SubjectApiModel subject, String programCode, String initials) {
+  Widget _buildSubjectMobileCard(SubjectApiModel subject, String programCode, String initials, bool isDark) {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -306,7 +323,7 @@ class _StudentSubjectsScreenState extends ConsumerState<StudentSubjectsScreen> {
                     ),
                     Text(
                       '${subject.program?.code ?? programCode} · Stage ${subject.stage}',
-                      style: const TextStyle(color: AppColors.darkTextMuted),
+                      style: TextStyle(color: isDark ? AppColors.darkTextMuted : AppColors.textMuted),
                     ),
                   ],
                 ),
@@ -317,15 +334,16 @@ class _StudentSubjectsScreenState extends ConsumerState<StudentSubjectsScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildMetric('CODE', subject.code),
-              _buildMetric('STAGE', '${subject.stage}'),
-              _buildMetric('CREDITS', '${subject.creditHours.round()}'),
+              _buildMetric('CODE', subject.code, isDark),
+              _buildMetric('STAGE', '${subject.stage}', isDark),
+              _buildMetric('CREDITS', '${subject.creditHours.round()}', isDark),
               _buildMetricWidget(
                 'TYPE',
                 BadgeChip(
                   label: subject.hasPractical ? 'Theory + Lab' : 'Theory',
                   tone: subject.hasPractical ? BadgeTone.accent : BadgeTone.primary,
                 ),
+                isDark,
               ),
             ],
           ),
@@ -334,7 +352,7 @@ class _StudentSubjectsScreenState extends ConsumerState<StudentSubjectsScreen> {
     );
   }
 
-  Widget _buildMetric(String label, String value) {
+  Widget _buildMetric(String label, String value, bool isDark) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -342,7 +360,7 @@ class _StudentSubjectsScreenState extends ConsumerState<StudentSubjectsScreen> {
           label,
           style: AppTextStyles.caption.copyWith(
             fontSize: 10,
-            color: AppColors.darkTextMuted,
+            color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
           ),
         ),
         const SizedBox(height: 4),
@@ -354,7 +372,7 @@ class _StudentSubjectsScreenState extends ConsumerState<StudentSubjectsScreen> {
     );
   }
 
-  Widget _buildMetricWidget(String label, Widget child) {
+  Widget _buildMetricWidget(String label, Widget child, bool isDark) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -362,7 +380,7 @@ class _StudentSubjectsScreenState extends ConsumerState<StudentSubjectsScreen> {
           label,
           style: AppTextStyles.caption.copyWith(
             fontSize: 10,
-            color: AppColors.darkTextMuted,
+            color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
           ),
         ),
         const SizedBox(height: 4),

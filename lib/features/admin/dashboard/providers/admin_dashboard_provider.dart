@@ -102,21 +102,48 @@ final adminDashboardProvider = FutureProvider.autoDispose<AdminDashboardData>((r
      } catch (_) {}
   }
 
-  // Mocked trend data (as API doesn't provide historical snapshots easily)
-  final enrollmentTrend = [
-    {'month': 'Sep', 'students': 850, 'fees': 4.2},
-    {'month': 'Oct', 'students': 920, 'fees': 4.8},
-    {'month': 'Nov', 'students': 980, 'fees': 5.5},
-    {'month': 'Dec', 'students': 1050, 'fees': 6.2},
-    {'month': 'Jan', 'students': 1100, 'fees': 7.1},
-    {'month': 'Feb', 'students': 1140, 'fees': 7.8},
-    {'month': 'Mar', 'students': 1184, 'fees': 8.4},
-  ];
+  // Fetch real fee summary from backend
+  double totalFeeCollection = 0.0;
+  try {
+    final summary = await ref.read(feesRepositoryProvider).getSummary(sessionId: sessionId);
+    totalFeeCollection = (summary['total_collected'] as num?)?.toDouble() ?? 0.0;
+    final summaryPending = (summary['total_pending'] as num?)?.toDouble() ?? 0.0;
+    if (pendingDues == 0 && summaryPending > 0) {
+      pendingDues = summaryPending;
+    }
+    if (feeDefaultersCount == 0) {
+      feeDefaultersCount = (summary['defaulters_count'] as num?)?.toInt() ?? 0;
+    }
+    final byProg = summary['by_program'] as Map<String, dynamic>? ?? {};
+    byProg.forEach((prog, amount) {
+      if (programFees.containsKey(prog)) {
+        programFees[prog]!['collected'] = (amount as num).toDouble();
+      }
+    });
+  } catch (_) {}
+
+  // Dynamic enrollment trend from active academic sessions
+  final sessionsList = await ref.watch(sessionsListProvider.future);
+  final enrollmentTrend = <Map<String, dynamic>>[];
+  for (final s in sessionsList.reversed) {
+    enrollmentTrend.add({
+      'month': s.name,
+      'students': s.studentsCount,
+      'fees': double.parse((s.studentsCount > 0 ? (totalFeeCollection / 1000.0) : 0.0).toStringAsFixed(1)),
+    });
+  }
+  if (enrollmentTrend.isEmpty) {
+    enrollmentTrend.add({
+      'month': session?.name ?? 'Current',
+      'students': students.length,
+      'fees': double.parse((totalFeeCollection / 1000.0).toStringAsFixed(1)),
+    });
+  }
 
   return AdminDashboardData(
     totalStudents: students.length,
     totalStaff: staff.length,
-    totalFeeCollection: 8.4 * 1000000, // Still mocked as no aggregate collection endpoint
+    totalFeeCollection: totalFeeCollection,
     totalPendingDues: pendingDues,
     enrollmentTrend: enrollmentTrend,
     departmentDistribution: departmentDistribution,
@@ -124,6 +151,6 @@ final adminDashboardProvider = FutureProvider.autoDispose<AdminDashboardData>((r
     currentSessionName: session?.name ?? 'Unknown Session',
     feeDefaultersCount: feeDefaultersCount,
     attendanceShortageCount: attendanceShortageCount,
-    resultSheetsAwaitingCount: 3,
+    resultSheetsAwaitingCount: 0,
   );
 });

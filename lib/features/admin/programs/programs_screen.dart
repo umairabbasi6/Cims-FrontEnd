@@ -14,6 +14,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cims/features/admin/programs/add_program_modal.dart';
 import 'package:cims/features/admin/programs/models/program_model.dart';
 import 'package:cims/features/admin/programs/providers/program_provider.dart';
+import 'package:cims/features/admin/students/providers/student_provider.dart';
 import 'package:cims/core/network/dio_error_message.dart';
 import 'package:cims/core/utils/modal_helpers.dart';
 import 'package:cims/core/utils/csv_export_helper.dart' as csv_helper;
@@ -129,7 +130,16 @@ class _ProgramsScreenState extends ConsumerState<ProgramsScreen> {
     final filteredPrograms = _getFiltered(allPrograms);
     final activePrograms = allPrograms.where((p) => p.isActive).length;
     final semesterPrograms = allPrograms.where((p) => p.programType == 'Semester').length;
-    final totalStudents = 0;
+    final studentsList = ref.watch(studentsListProvider).value ?? [];
+    final totalStudents = studentsList.length;
+
+    final studentsCountByProg = <int, int>{};
+    for (final s in studentsList) {
+      final progId = s.program?.id;
+      if (progId != null) {
+        studentsCountByProg[progId] = (studentsCountByProg[progId] ?? 0) + 1;
+      }
+    }
 
     return AppScaffold(
       title: 'Programs Management',
@@ -177,6 +187,7 @@ class _ProgramsScreenState extends ConsumerState<ProgramsScreen> {
           else if (Responsive.isMobile(context))
             _MobilePrograms(
               programs: filteredPrograms,
+              studentsCountByProg: studentsCountByProg,
               onEdit: _openEdit,
               onDelete: _confirmDelete,
             )
@@ -355,6 +366,7 @@ class _Toolbar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
     final isMobile = Responsive.isMobile(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -426,9 +438,7 @@ class _Toolbar extends StatelessWidget {
       label: const Text('Add Program', style: TextStyle(fontWeight: FontWeight.w600)),
     );
 
-    final screenWidth = MediaQuery.of(context).size.width;
-
-    if (screenWidth < 600) {
+    if (Responsive.isMobile(context)) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -840,11 +850,13 @@ class _ProgramRowState extends State<_ProgramRow> {
 
 class _MobilePrograms extends StatelessWidget {
   final List<ProgramModel> programs;
+  final Map<int, int> studentsCountByProg;
   final void Function(ProgramModel) onEdit;
   final void Function(ProgramModel) onDelete;
 
   const _MobilePrograms({
     required this.programs,
+    required this.studentsCountByProg,
     required this.onEdit,
     required this.onDelete,
   });
@@ -858,6 +870,7 @@ class _MobilePrograms extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 12),
               child: _MobileProgramCard(
                 program: program,
+                studentsCount: studentsCountByProg[program.id] ?? 0,
                 onEdit: () => onEdit(program),
                 onDelete: () => onDelete(program),
               ),
@@ -870,11 +883,13 @@ class _MobilePrograms extends StatelessWidget {
 
 class _MobileProgramCard extends StatelessWidget {
   final ProgramModel program;
+  final int studentsCount;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
   const _MobileProgramCard({
     required this.program,
+    required this.studentsCount,
     required this.onEdit,
     required this.onDelete,
   });
@@ -931,7 +946,7 @@ class _MobileProgramCard extends StatelessWidget {
           Row(
             children: [
               Expanded(child: Text('${program.totalStages} Stages')),
-              Expanded(child: Text('0 Students')),
+              Expanded(child: Text('$studentsCount Students')),
             ],
           ),
           const SizedBox(height: 14),
@@ -973,15 +988,16 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(40),
       alignment: Alignment.center,
       child: Column(
         children: [
-          const Icon(
+          Icon(
             Icons.menu_book_outlined,
             size: 54,
-            color: AppColors.textMuted,
+            color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
           ),
           const SizedBox(height: 14),
           Text(
@@ -992,7 +1008,7 @@ class _EmptyState extends StatelessWidget {
           Text(
             'Try changing filters or search query.',
             style: AppTextStyles.body.copyWith(
-              color: AppColors.textMuted,
+              color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
             ),
           ),
         ],

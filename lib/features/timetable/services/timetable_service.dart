@@ -151,8 +151,8 @@ class TimetableService {
           .map((e) => Map<String, dynamic>.from(e as Map))
           .toList();
     }
-    if (data is Map<String, dynamic>) {
-      final inner = data['slots'] ?? data['items'];
+    if (data is Map) {
+      final inner = data['slots'] ?? data['items'] ?? data['data'];
       if (inner is List) {
         return inner
             .map((e) => Map<String, dynamic>.from(e as Map))

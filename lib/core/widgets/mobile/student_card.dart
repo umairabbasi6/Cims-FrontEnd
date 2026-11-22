@@ -49,6 +49,8 @@ class StudentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -58,7 +60,7 @@ class StudentCard extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             border: Border(
-              top: BorderSide(color: AppColors.darkBorder),
+              top: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.border),
             ),
           ),
           child: Column(
@@ -93,13 +95,14 @@ class StudentCard extends StatelessWidget {
                           data.name,
                           style: AppTextStyles.body.copyWith(
                             fontWeight: FontWeight.w700,
+                            color: isDark ? Colors.white : AppColors.text,
                           ),
                         ),
                         const SizedBox(height: 2),
                         Text(
                           data.rollNo,
                           style: AppTextStyles.caption.copyWith(
-                            color: AppColors.darkTextMuted,
+                            color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                           ),
                         ),
                       ],
@@ -113,9 +116,9 @@ class StudentCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 14),
-              _detailRow('Program', data.program),
+              _detailRow('Program', data.program, isDark),
               const SizedBox(height: 10),
-              _detailRow('Session', data.session),
+              _detailRow('Session', data.session, isDark),
               const SizedBox(height: 10),
               Row(
                 children: [
@@ -126,6 +129,7 @@ class StudentCard extends StatelessWidget {
                         label: data.stage,
                         tone: BadgeTone.primary,
                       ),
+                      isDark,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -133,6 +137,7 @@ class StudentCard extends StatelessWidget {
                     child: _detailBadge(
                       'Status',
                       BadgeChip.status(data.status),
+                      isDark,
                     ),
                   ),
                 ],
@@ -144,7 +149,7 @@ class StudentCard extends StatelessWidget {
     );
   }
 
-  Widget _detailRow(String label, String value) {
+  Widget _detailRow(String label, String value, bool isDark) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -153,28 +158,30 @@ class StudentCard extends StatelessWidget {
           child: Text(
             label,
             style: AppTextStyles.caption.copyWith(
-              color: AppColors.darkTextMuted,
+              color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
             ),
           ),
         ),
         Expanded(
           child: Text(
             value,
-            style: AppTextStyles.body,
+            style: AppTextStyles.body.copyWith(
+              color: isDark ? Colors.white : AppColors.text,
+            ),
           ),
         ),
       ],
     );
   }
 
-  Widget _detailBadge(String label, Widget child) {
+  Widget _detailBadge(String label, Widget child, bool isDark) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
           style: AppTextStyles.caption.copyWith(
-            color: AppColors.darkTextMuted,
+            color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
           ),
         ),
         const SizedBox(height: 6),
@@ -188,10 +195,12 @@ Future<void> showStudentQuickDetailSheet(
   BuildContext context,
   StudentCardData data,
 ) {
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
-    backgroundColor: AppColors.darkSurface,
+    backgroundColor: isDark ? AppColors.darkSurface : Colors.white,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(
         top: Radius.circular(AppMobileRadii.sheet),
@@ -232,12 +241,14 @@ Future<void> showStudentQuickDetailSheet(
                       children: [
                         Text(
                           data.name,
-                          style: AppTextStyles.h3,
+                          style: AppTextStyles.h3.copyWith(
+                            color: isDark ? Colors.white : AppColors.text,
+                          ),
                         ),
                         Text(
                           data.rollNo,
                           style: AppTextStyles.caption.copyWith(
-                            color: AppColors.darkTextMuted,
+                            color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                           ),
                         ),
                       ],
@@ -248,13 +259,15 @@ Future<void> showStudentQuickDetailSheet(
               const SizedBox(height: 20),
               Text(
                 data.program,
-                style: AppTextStyles.body,
+                style: AppTextStyles.body.copyWith(
+                  color: isDark ? Colors.white : AppColors.text,
+                ),
               ),
               const SizedBox(height: 8),
               Text(
                 '${data.session} · Stage ${data.stage}',
                 style: AppTextStyles.bodySm.copyWith(
-                  color: AppColors.darkTextMuted,
+                  color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                 ),
               ),
               const SizedBox(height: 20),

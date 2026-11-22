@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:cims/core/constants/app_colors.dart';
 import 'package:cims/core/constants/app_text_styles.dart';
-import 'package:cims/core/utils/responsive.dart';
 import 'package:cims/core/widgets/app_scaffold.dart';
 import 'package:cims/core/widgets/badge_chip.dart';
 import 'package:cims/features/student/providers/student_program_provider.dart';
@@ -12,6 +11,7 @@ import 'package:cims/features/admin/students/providers/student_provider.dart';
 import 'package:cims/features/auth/providers/auth_provider.dart';
 import 'package:cims/features/auth/models/change_password_request.dart';
 import 'package:cims/core/theme/theme_mode_provider.dart';
+import 'package:cims/core/utils/responsive.dart';
 
 class StudentProfileScreen extends ConsumerWidget {
   final void Function(String route) onNavigate;
@@ -23,7 +23,7 @@ class StudentProfileScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final bool isMobile = MediaQuery.of(context).size.width < 600;
+    final bool isMobile = Responsive.isMobile(context);
 
     final studentAsync = ref.watch(currentStudentProvider);
     final overviewAsync = ref.watch(studentProgramOverviewProvider);
@@ -102,7 +102,8 @@ class _ProfileHeader extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final bool isMobile = MediaQuery.of(context).size.width < 600;
+    final bool isMobile = Responsive.isMobile(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final initials = _initials(student.fullName);
     final subtitleParts = [
@@ -113,9 +114,9 @@ class _ProfileHeader extends ConsumerWidget {
     return Container(
       padding: EdgeInsets.all(isMobile ? 16 : 24),
       decoration: BoxDecoration(
-        color: AppColors.darkSurface,
+        color: isDark ? AppColors.darkSurface : Colors.white,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.darkBorder),
+        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
       ),
       child: isMobile
           ? Column(
@@ -153,8 +154,12 @@ class _ProfileHeader extends ConsumerWidget {
                             ),
                           ),
                           if (subtitleParts.isNotEmpty)
-                            Text(subtitleParts.join(' · '),
-                              style: const TextStyle(color: AppColors.darkTextMuted, fontSize: 13),
+                            Text(
+                              subtitleParts.join(' · '),
+                              style: TextStyle(
+                                color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                                fontSize: 13,
+                              ),
                             ),
                         ],
                       ),
@@ -234,8 +239,11 @@ class _ProfileHeader extends ConsumerWidget {
                       ),
                       SizedBox(height: 4),
                       if (subtitleParts.isNotEmpty)
-                        Text(subtitleParts.join(' · '),
-                          style: const TextStyle(color: AppColors.darkTextMuted),
+                        Text(
+                          subtitleParts.join(' · '),
+                          style: TextStyle(
+                            color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                          ),
                         ),
                       SizedBox(height: 14),
                       Row(
@@ -299,12 +307,18 @@ class _ProfileMeta extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
         SizedBox(height: 4),
-        Text(value, style: const TextStyle(color: AppColors.darkTextMuted)),
+        Text(
+          value,
+          style: TextStyle(
+            color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+          ),
+        ),
       ],
     );
   }
@@ -400,7 +414,8 @@ class _PersonalInformationCardState
 
   @override
   Widget build(BuildContext context) {
-    final bool isMobile = MediaQuery.of(context).size.width < 600;
+    final bool isMobile = Responsive.isMobile(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final student = widget.student;
     final programLabel = student.program != null
@@ -409,9 +424,9 @@ class _PersonalInformationCardState
 
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.darkSurface,
+        color: isDark ? AppColors.darkSurface : Colors.white,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.darkBorder),
+        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
       ),
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -420,8 +435,9 @@ class _PersonalInformationCardState
           children: [
             Text('Personal Information', style: AppTextStyles.h2),
             SizedBox(height: 4),
-            Text('Update your account details',
-              style: const TextStyle(color: AppColors.darkTextMuted),
+            Text(
+              'Update your account details',
+              style: TextStyle(color: isDark ? AppColors.darkTextMuted : AppColors.textMuted),
             ),
             SizedBox(height: 20),
             if (isMobile) ...[
@@ -500,6 +516,7 @@ class _ReadOnlyField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -510,12 +527,14 @@ class _ReadOnlyField extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 14),
           alignment: Alignment.centerLeft,
           decoration: BoxDecoration(
-            color: AppColors.darkSurfaceAlt.withValues(alpha: 0.5),
+            color: isDark ? AppColors.darkSurfaceAlt.withValues(alpha: 0.5) : AppColors.surfaceAlt,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.darkBorder),
+            border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
           ),
-          child: Text(value.isEmpty ? '—' : value,
-              style: const TextStyle(color: AppColors.darkTextMuted)),
+          child: Text(
+            value.isEmpty ? '—' : value,
+            style: TextStyle(color: isDark ? AppColors.darkTextMuted : AppColors.textMuted),
+          ),
         ),
       ],
     );
@@ -535,6 +554,7 @@ class _EditableField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -544,18 +564,18 @@ class _EditableField extends StatelessWidget {
           controller: controller,
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: const TextStyle(color: AppColors.darkTextMuted),
+            hintStyle: TextStyle(color: isDark ? AppColors.darkTextMuted : AppColors.textMuted),
             filled: true,
-            fillColor: AppColors.darkSurfaceAlt,
+            fillColor: isDark ? AppColors.darkSurfaceAlt : AppColors.surfaceAlt,
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 14, vertical: 0),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: AppColors.darkBorder),
+              borderSide: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.border),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: AppColors.darkBorder),
+              borderSide: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.border),
             ),
           ),
         ),
@@ -573,6 +593,7 @@ class _SecurityCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final items = [
       (Icons.lock_outline_rounded, AppColors.primary, 'Change password',
           'Keep your account safe', 'Update', 'button'),
@@ -580,15 +601,15 @@ class _SecurityCard extends ConsumerWidget {
           'SMS to +92 300 ••• 4567', 'Enabled', 'success'),
       (Icons.notifications_none_rounded, AppColors.accent, 'Email notifications',
           'Activity, alerts, summaries', 'On', 'primary'),
-      (Icons.dark_mode_outlined, AppColors.purple, 'Theme', 'Dark mode',
+      (Icons.dark_mode_outlined, AppColors.purple, 'Theme', isDark ? 'Dark mode' : 'Light mode',
           'Toggle', 'button'),
     ];
 
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.darkSurface,
+        color: isDark ? AppColors.darkSurface : Colors.white,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.darkBorder),
+        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
       ),
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -597,8 +618,10 @@ class _SecurityCard extends ConsumerWidget {
           children: [
             Text('Security & Preferences', style: AppTextStyles.h2),
             SizedBox(height: 4),
-            const Text('Account protection',
-                style: TextStyle(color: AppColors.darkTextMuted)),
+            Text(
+              'Account protection',
+              style: TextStyle(color: isDark ? AppColors.darkTextMuted : AppColors.textMuted),
+            ),
             SizedBox(height: 20),
             ...items.map(
               (item) => Padding(
@@ -622,9 +645,12 @@ class _SecurityCard extends ConsumerWidget {
                           Text(item.$3,
                               style: AppTextStyles.body
                                   .copyWith(fontWeight: FontWeight.w700)),
-                          Text(item.$4,
-                              style: const TextStyle(
-                                  color: AppColors.darkTextMuted)),
+                          Text(
+                            item.$4,
+                            style: TextStyle(
+                              color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -667,10 +693,20 @@ Future<void> _showChangePasswordDialog(BuildContext context, WidgetRef ref) asyn
     context: context,
     builder: (ctx) => StatefulBuilder(
       builder: (context, setState) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
         return AlertDialog(
-          backgroundColor: AppColors.darkSurface,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: AppColors.darkBorder)),
-          title: const Text('Change Password'),
+          backgroundColor: isDark ? AppColors.darkSurface : Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.border),
+          ),
+          title: Text(
+            'Change Password',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: isDark ? AppColors.darkText : AppColors.text,
+            ),
+          ),
           content: Form(
             key: formKey,
             child: Column(
@@ -679,10 +715,11 @@ Future<void> _showChangePasswordDialog(BuildContext context, WidgetRef ref) asyn
                 TextFormField(
                   controller: oldCtrl,
                   obscureText: true,
+                  style: TextStyle(color: isDark ? AppColors.darkText : AppColors.text),
                   decoration: InputDecoration(
                     labelText: 'Current Password',
                     filled: true,
-                    fillColor: AppColors.darkSurfaceAlt,
+                    fillColor: isDark ? AppColors.darkSurfaceAlt : AppColors.surfaceAlt,
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                   ),
                   validator: (v) => v!.isEmpty ? 'Required' : null,
@@ -691,10 +728,11 @@ Future<void> _showChangePasswordDialog(BuildContext context, WidgetRef ref) asyn
                 TextFormField(
                   controller: newCtrl,
                   obscureText: true,
+                  style: TextStyle(color: isDark ? AppColors.darkText : AppColors.text),
                   decoration: InputDecoration(
                     labelText: 'New Password',
                     filled: true,
-                    fillColor: AppColors.darkSurfaceAlt,
+                    fillColor: isDark ? AppColors.darkSurfaceAlt : AppColors.surfaceAlt,
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                   ),
                   validator: (v) => v!.length < 6 ? 'Min 6 chars' : null,

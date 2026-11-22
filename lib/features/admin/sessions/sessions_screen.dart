@@ -52,7 +52,7 @@ class SessionModel {
       endDate: ymd(a.endDate),
       status: status,
       current: a.isCurrent,
-      students: 0,
+      students: a.studentsCount,
     );
   }
 }
@@ -368,9 +368,7 @@ class _DesktopToolbar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-
-    if (screenWidth < 1100) {
+    if (!Responsive.isDesktop(context)) {
       return Wrap(
         spacing: 12,
         runSpacing: 12,

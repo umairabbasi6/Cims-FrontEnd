@@ -14,6 +14,8 @@ import 'package:cims/features/admin/students/student_detail_modal.dart';
 import 'package:cims/features/admin/students/student_filter_modal.dart';
 import 'package:cims/features/admin/students/models/student_api_model.dart';
 import 'package:cims/features/admin/students/providers/student_provider.dart';
+import 'package:cims/features/admin/sessions/providers/session_provider.dart';
+import 'package:cims/core/utils/csv_export_helper.dart' as csv_helper;
 
 class StudentsScreen extends ConsumerStatefulWidget {
   final void Function(String route) onNavigate;
@@ -154,6 +156,7 @@ class _StudentsScreenState
   @override
   Widget build(BuildContext context) {
     final bool isPhone = Responsive.isMobile(context);
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final studentsAsync = ref.watch(studentsListProvider);
 
     return AppScaffold(
@@ -182,7 +185,11 @@ class _StudentsScreenState
                   return hay.contains(query);
                 }).toList();
 
-          final students = _toRows(finalList);
+          // Sort by id descending so newly added students appear at the top
+          final sortedList = List<StudentApiModel>.from(finalList)
+            ..sort((a, b) => b.id.compareTo(a.id));
+
+          final students = _toRows(sortedList);
 
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -212,13 +219,22 @@ class _StudentsScreenState
                       decoration: BoxDecoration(
                         color: active
                             ? AppColors.primary
-                            : Colors.transparent,
+                            : (isDark ? Colors.transparent : Colors.white),
                         borderRadius: BorderRadius.circular(999),
                         border: Border.all(
                           color: active
                               ? AppColors.primary
-                              : AppColors.darkBorder,
+                              : (isDark ? AppColors.darkBorder : AppColors.border),
                         ),
+                        boxShadow: active || isDark
+                            ? null
+                            : [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.03),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
                       ),
                       child: Text(
                         tab,
@@ -226,33 +242,42 @@ class _StudentsScreenState
                           fontWeight: FontWeight.w700,
                           color: active
                               ? Colors.white
-                              : AppColors.darkText,
+                              : (isDark ? AppColors.darkText : AppColors.text),
                         ),
                       ),
                     ),
                   );
                 }).toList(),
               ),
-              SizedBox(height: 22),
+              const SizedBox(height: 22),
               Container(
                 decoration: BoxDecoration(
-                  color: AppColors.darkSurface,
+                  color: isDark ? AppColors.darkSurface : Colors.white,
                   borderRadius: BorderRadius.circular(18),
                   border: Border.all(
-                    color: AppColors.darkBorder,
+                    color: isDark ? AppColors.darkBorder : AppColors.border,
                   ),
+                  boxShadow: isDark
+                      ? null
+                      : [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.04),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                 ),
                 child: Column(
                   children: [
                     Padding(
                       padding: const EdgeInsets.all(16),
                       child: isPhone
-                          ? _mobileToolbar()
-                          : _desktopToolbar(),
+                          ? _mobileToolbar(finalList, isDark)
+                          : _desktopToolbar(finalList, isDark),
                     ),
                     Divider(
                       height: 1,
-                      color: AppColors.darkBorder,
+                      color: isDark ? AppColors.darkBorder : AppColors.border,
                     ),
                     if (isPhone)
                       ...students.map(_studentCard)
@@ -268,22 +293,23 @@ class _StudentsScreenState
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 18,
                                 ),
-                                decoration: const BoxDecoration(
-                                  color: AppColors.darkSurfaceAlt,
+                                decoration: BoxDecoration(
+                                  color: isDark ? AppColors.darkSurfaceAlt : AppColors.surfaceAlt,
+                                  borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
                                 ),
                                 child: Row(
                                   children: [
-                                    _header('STUDENT', 2.5),
-                                    _header('ROLL NO', 2.1),
-                                    _header('PROGRAM', 3),
-                                    _header('SESSION', 1.8),
-                                    _header('STAGE', 1.2),
-                                    _header('STATUS', 1.6),
-                                    _header('ACTIONS', 1.8),
+                                    _header('STUDENT', 2.5, isDark),
+                                    _header('ROLL NO', 2.1, isDark),
+                                    _header('PROGRAM', 3, isDark),
+                                    _header('SESSION', 1.8, isDark),
+                                    _header('STAGE', 1.2, isDark),
+                                    _header('STATUS', 1.6, isDark),
+                                    _header('ACTIONS', 1.8, isDark),
                                   ],
                                 ),
                               ),
-                              ...students.map(_studentRow),
+                              ...students.map((s) => _studentRow(s, isDark)),
                             ],
                           ),
                         ),
@@ -326,7 +352,7 @@ class _StudentsScreenState
     );
   }
 
-  Widget _desktopToolbar() {
+  Widget _desktopToolbar(List<StudentApiModel> finalList, bool isDark) {
     return Row(
       children: [
         Expanded(
@@ -339,7 +365,7 @@ class _StudentsScreenState
             onChanged: (_) => setState(() {}),
           ),
         ),
-        SizedBox(width: 12),
+        const SizedBox(width: 12),
         SizedBox(
           width: 180,
           child: Builder(builder: (ctx) {
@@ -357,22 +383,63 @@ class _StudentsScreenState
             return DropdownButtonFormField<String>(
               initialValue: opts.contains(selectedStatusFilter) ? selectedStatusFilter : 'All Status',
               decoration: const InputDecoration(),
-              dropdownColor: Theme.of(context).brightness == Brightness.dark ? AppColors.darkSurface : AppColors.surface,
+              dropdownColor: isDark ? AppColors.darkSurface : AppColors.surface,
               items: opts.map((e) => DropdownMenuItem(value: e, child: Text(prettyStatus(e)))).toList(),
               onChanged: (v) => setState(() => selectedStatusFilter = v ?? 'All Status'),
             );
           }),
         ),
-        SizedBox(width: 14),
-        _filterButton(),
+        const SizedBox(width: 14),
+        _filterButton(isDark),
         const Spacer(),
         if (!_isTeacher) ...[
           OutlinedButton.icon(
-            onPressed: () {},
-            icon: const Icon(Icons.download_rounded),
-            label: const Text('Export'),
+            onPressed: () => _exportStudentsCsv(finalList),
+            icon: Icon(Icons.download_rounded, color: isDark ? Colors.white : AppColors.text),
+            label: Text('Export', style: TextStyle(color: isDark ? Colors.white : AppColors.text)),
+            style: OutlinedButton.styleFrom(
+              side: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.border),
+            ),
           ),
-          SizedBox(width: 12),
+          const SizedBox(width: 12),
+          PopupMenuButton<String>(
+            tooltip: 'Batch Actions',
+            icon: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.flash_on_rounded, size: 20),
+            ),
+            onSelected: (val) {
+              if (val == 'promote') _showBulkPromoteDialog();
+              if (val == 'graduate') _showBulkGraduateDialog();
+            },
+            itemBuilder: (ctx) => const [
+              PopupMenuItem(
+                value: 'promote',
+                child: Row(
+                  children: [
+                    Icon(Icons.upgrade_rounded, size: 18),
+                    SizedBox(width: 8),
+                    Text('Batch Promote Cohort'),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'graduate',
+                child: Row(
+                  children: [
+                    Icon(Icons.school_rounded, size: 18),
+                    SizedBox(width: 8),
+                    Text('Batch Graduate Eligible'),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(width: 12),
           ElevatedButton.icon(
             onPressed: _showEnrollModal,
             icon: const Icon(Icons.add_rounded),
@@ -383,21 +450,172 @@ class _StudentsScreenState
     );
   }
 
-  Widget _filterButton() {
+  void _showBulkPromoteDialog() {
+    final sessionsAsync = ref.read(sessionsProvider);
+    int? selectedSessionId;
+    bool isProcessing = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDlgState) => AlertDialog(
+          title: const Text('Batch Promote Students'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'This will advance all active students by 1 stage in the database engine using PostgreSQL stored procedures.',
+                style: TextStyle(fontSize: 13),
+              ),
+              const SizedBox(height: 16),
+              sessionsAsync.when(
+                data: (sess) => DropdownButtonFormField<int>(
+                  value: selectedSessionId,
+                  decoration: const InputDecoration(labelText: 'Target Session'),
+                  items: sess.map((s) => DropdownMenuItem(value: s.id, child: Text(s.name))).toList(),
+                  onChanged: (v) => setDlgState(() => selectedSessionId = v),
+                ),
+                loading: () => const LinearProgressIndicator(),
+                error: (e, _) => Text('Error loading sessions: $e'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: isProcessing ? null : () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: isProcessing || selectedSessionId == null
+                  ? null
+                  : () async {
+                      setDlgState(() => isProcessing = true);
+                      try {
+                        final msg = await ref.read(studentRepositoryProvider).bulkPromoteStudents(selectedSessionId!);
+                        ref.invalidate(studentsListProvider);
+                        if (ctx.mounted) Navigator.pop(ctx);
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(msg), backgroundColor: AppColors.success),
+                          );
+                        }
+                      } catch (e) {
+                        if (ctx.mounted) {
+                          ScaffoldMessenger.of(ctx).showSnackBar(
+                            SnackBar(content: Text('Failed: $e'), backgroundColor: AppColors.error),
+                          );
+                        }
+                      } finally {
+                        if (ctx.mounted) setDlgState(() => isProcessing = false);
+                      }
+                    },
+              child: Text(isProcessing ? 'Promoting...' : 'Promote Cohort'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showBulkGraduateDialog() {
+    bool isProcessing = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDlgState) => AlertDialog(
+          title: const Text('Batch Graduate Eligible Students'),
+          content: const Text(
+            'This will graduate all active students who have reached or exceeded their program\'s total required stages. Are you sure you want to proceed?',
+            style: TextStyle(fontSize: 13),
+          ),
+          actions: [
+            TextButton(
+              onPressed: isProcessing ? null : () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+              onPressed: isProcessing
+                  ? null
+                  : () async {
+                      setDlgState(() => isProcessing = true);
+                      try {
+                        final msg = await ref.read(studentRepositoryProvider).bulkGraduateStudents();
+                        ref.invalidate(studentsListProvider);
+                        if (ctx.mounted) Navigator.pop(ctx);
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(msg), backgroundColor: AppColors.success),
+                          );
+                        }
+                      } catch (e) {
+                        if (ctx.mounted) {
+                          ScaffoldMessenger.of(ctx).showSnackBar(
+                            SnackBar(content: Text('Failed: $e'), backgroundColor: AppColors.error),
+                          );
+                        }
+                      } finally {
+                        if (ctx.mounted) setDlgState(() => isProcessing = false);
+                      }
+                    },
+              child: Text(isProcessing ? 'Graduating...' : 'Graduate Eligible'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _exportStudentsCsv(List<StudentApiModel> list) {
+    if (list.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No student records to export.')),
+      );
+      return;
+    }
+
+    final StringBuffer csv = StringBuffer();
+    csv.writeln('ID,Roll No,Name,Email,Phone,Program,Session,Stage,Status');
+
+    for (final s in list) {
+      final name = s.fullName.replaceAll('"', '""');
+      final roll = s.studentIdCode;
+      final email = s.email ?? '';
+      final phone = s.phone ?? '';
+      final prog = s.program?.name ?? '';
+      final sess = s.admissionSession?.name ?? '';
+      final stage = 'Stage ${s.currentStage}';
+      final status = s.status;
+
+      csv.writeln('${s.id},"$roll","$name","$email","$phone","$prog","$sess","$stage","$status"');
+    }
+
+    final fileName = 'Students_Export_${DateTime.now().toLocal().toString().split(' ')[0]}.csv';
+    csv_helper.saveAndShareCsv(
+      csvString: csv.toString(),
+      fileName: fileName,
+    );
+  }
+
+  Widget _filterButton(bool isDark) {
     final hasActiveFilters = ref.watch(studentProgramFilterProvider) != null ||
         ref.watch(studentSessionFilterProvider) != null ||
         ref.watch(studentStatusFilterProvider) != null;
+
+    final defaultColor = isDark ? AppColors.darkTextMuted : AppColors.textMuted;
 
     return TextButton.icon(
       onPressed: _showFilterDialog,
       icon: Icon(
         Icons.filter_alt_outlined,
-        color: hasActiveFilters ? AppColors.primary : null,
+        color: hasActiveFilters ? AppColors.primary : defaultColor,
       ),
       label: Text(
         hasActiveFilters ? 'Filters (Active)' : 'Filters',
         style: TextStyle(
-          color: hasActiveFilters ? AppColors.primary : null,
+          color: hasActiveFilters ? AppColors.primary : defaultColor,
           fontWeight: hasActiveFilters ? FontWeight.bold : null,
         ),
       ),
@@ -412,7 +630,7 @@ class _StudentsScreenState
     );
   }
 
-  Widget _mobileToolbar() {
+  Widget _mobileToolbar(List<StudentApiModel> finalList, bool isDark) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -424,13 +642,14 @@ class _StudentsScreenState
           ),
           onChanged: (_) => setState(() {}),
         ),
-        SizedBox(height: 12),
+        const SizedBox(height: 12),
         Row(
           children: [
             Expanded(
               child: DropdownButtonFormField<String>(
                 initialValue: selectedStatusFilter,
                 decoration: const InputDecoration(),
+                dropdownColor: isDark ? AppColors.darkSurface : AppColors.surface,
                 items: () {
                   final opts = <String>['All Status'];
                   final studentsAsync = ref.watch(studentsListProvider);
@@ -446,22 +665,25 @@ class _StudentsScreenState
                 onChanged: (v) => setState(() => selectedStatusFilter = v ?? 'All Status'),
               ),
             ),
-            SizedBox(width: 12),
-            _filterButton(),
+            const SizedBox(width: 12),
+            _filterButton(isDark),
           ],
         ),
         if (!_isTeacher) ...[
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () {},
-                  icon: const Icon(Icons.download_rounded),
-                  label: const Text('Export'),
+                  onPressed: () => _exportStudentsCsv(finalList),
+                  icon: Icon(Icons.download_rounded, color: isDark ? Colors.white : AppColors.text),
+                  label: Text('Export', style: TextStyle(color: isDark ? Colors.white : AppColors.text)),
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.border),
+                  ),
                 ),
               ),
-              SizedBox(width: 12),
+              const SizedBox(width: 12),
               Expanded(
                 child: ElevatedButton.icon(
                   onPressed: _showEnrollModal,
@@ -569,7 +791,11 @@ class _StudentsScreenState
     );
   }
 
-  Widget _studentRow(Student s) {
+  Widget _studentRow(Student s, bool isDark) {
+    final textColor = isDark ? Colors.white : AppColors.text;
+    final textMutedColor = isDark ? AppColors.darkTextMuted : AppColors.textMuted;
+    final borderColor = isDark ? AppColors.darkBorder : AppColors.border;
+
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: 18,
@@ -578,7 +804,7 @@ class _StudentsScreenState
       decoration: BoxDecoration(
         border: Border(
           top: BorderSide(
-            color: AppColors.darkBorder,
+            color: borderColor,
           ),
         ),
       ),
@@ -604,7 +830,7 @@ class _StudentsScreenState
                     ),
                   ),
                 ),
-                SizedBox(width: 12),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -616,15 +842,16 @@ class _StudentsScreenState
                         overflow: TextOverflow.ellipsis,
                         style: AppTextStyles.body.copyWith(
                           fontWeight: FontWeight.w700,
+                          color: textColor,
                         ),
                       ),
-                      SizedBox(height: 2),
+                      const SizedBox(height: 2),
                       Text(
                         s.rollNo,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: AppTextStyles.caption.copyWith(
-                          color: AppColors.darkTextMuted,
+                          color: textMutedColor,
                         ),
                       ),
                     ],
@@ -641,6 +868,7 @@ class _StudentsScreenState
               overflow: TextOverflow.ellipsis,
               style: AppTextStyles.body.copyWith(
                 fontWeight: FontWeight.w700,
+                color: textColor,
               ),
             ),
           ),
@@ -650,7 +878,9 @@ class _StudentsScreenState
               s.program,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.body,
+              style: AppTextStyles.body.copyWith(
+                color: textColor,
+              ),
             ),
           ),
           Expanded(
@@ -659,7 +889,9 @@ class _StudentsScreenState
               s.session,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.body,
+              style: AppTextStyles.body.copyWith(
+                color: textColor,
+              ),
             ),
           ),
           Expanded(
@@ -678,13 +910,13 @@ class _StudentsScreenState
             child: _isTeacher
                 ? Row(
                     children: [
-                              _actionButton(Icons.visibility_outlined, () {
-                                showResponsiveModal(
-                                  context: context,
-                                  barrierColor: Colors.black54,
-                                  child: StudentDetailModal(studentId: s.originalModel.id),
-                                );
-                              }),
+                      _actionButton(Icons.visibility_outlined, () {
+                        showResponsiveModal(
+                          context: context,
+                          barrierColor: Colors.black54,
+                          child: StudentDetailModal(studentId: s.originalModel.id),
+                        );
+                      }, isDark),
                     ],
                   )
                 : Row(
@@ -695,7 +927,7 @@ class _StudentsScreenState
                           barrierColor: Colors.black54,
                           child: StudentDetailModal(studentId: s.originalModel.id),
                         );
-                      }),
+                      }, isDark),
                       const SizedBox(width: 6),
                       _actionButton(Icons.edit_outlined, () async {
                         final updated = await showResponsiveModal<bool>(
@@ -706,7 +938,7 @@ class _StudentsScreenState
                         if (updated == true) {
                           ref.invalidate(studentsListProvider);
                         }
-                      }),
+                      }, isDark),
                       const SizedBox(width: 6),
                       _actionButton(Icons.delete_outline_rounded, () async {
                         final confirmed = await showDialog<bool>(
@@ -730,7 +962,7 @@ class _StudentsScreenState
                             ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to delete: $e')));
                           }
                         }
-                      }),
+                      }, isDark),
                     ],
                   ),
           ),
@@ -739,19 +971,20 @@ class _StudentsScreenState
     );
   }
 
-  Widget _header(String text, double flex) {
+  Widget _header(String text, double flex, bool isDark) {
     return Expanded(
       flex: (flex * 10).toInt(),
       child: Text(
         text,
         style: AppTextStyles.labelSm.copyWith(
           fontSize: 13,
+          color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
         ),
       ),
     );
   }
 
-  Widget _actionButton(IconData icon, VoidCallback onTap) {
+  Widget _actionButton(IconData icon, VoidCallback onTap, bool isDark) {
     return InkWell(
       borderRadius: BorderRadius.circular(10),
       onTap: onTap,
@@ -761,13 +994,13 @@ class _StudentsScreenState
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: AppColors.darkBorder,
+            color: isDark ? AppColors.darkBorder : AppColors.border,
           ),
         ),
         child: Icon(
           icon,
           size: 18,
-          color: AppColors.darkTextMuted,
+          color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
         ),
       ),
     );

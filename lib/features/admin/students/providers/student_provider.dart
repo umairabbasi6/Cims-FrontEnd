@@ -52,10 +52,15 @@ final studentsListProvider =
             final enrollments = await enrollmentsRepo.subjectEnrollments(subId, sessionId: session.id);
             for (final e in enrollments) {
               final studJson = e['student'];
-              if (studJson != null) {
-                final student = StudentApiModel.fromJson(studJson as Map<String, dynamic>);
-                if (studentIds.add(student.id)) {
-                  teacherStudents.add(student);
+              if (studJson != null && studJson['id'] != null) {
+                final sId = studJson['id'] as int;
+                if (studentIds.add(sId)) {
+                  try {
+                    final full = await repo.getStudent(sId);
+                    teacherStudents.add(full);
+                  } catch (_) {
+                    teacherStudents.add(StudentApiModel.fromJson(studJson as Map<String, dynamic>));
+                  }
                 }
               }
             }

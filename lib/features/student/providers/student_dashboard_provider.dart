@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cims/features/teacher/attendance/providers/attendance_api_provider.dart';
 import 'package:cims/features/admin/fees/providers/fees_api_provider.dart';
 import 'package:cims/features/admin/sessions/providers/session_provider.dart';
+import 'package:cims/features/admin/subjects/providers/subject_provider.dart';
 import 'package:cims/features/timetable/providers/timetable_provider.dart';
 import 'package:cims/features/student/providers/student_program_provider.dart';
 import 'package:cims/features/teacher/results/providers/results_api_provider.dart';
@@ -151,7 +152,17 @@ final studentDashboardProvider = FutureProvider.autoDispose<StudentDashboardData
           stage: student.currentStage,
         );
         
-        final slots = timetable.days.expand((d) => d.slots).toList();
+        final allSlots = timetable.days.expand((d) => d.slots).toList();
+        final subjects = await ref.read(subjectRepositoryProvider).listSubjects();
+        final slots = allSlots.where((slot) {
+          if (student.program?.id != null && subjects.isNotEmpty) {
+            final matches = subjects.where((s) => s.id == slot.subjectId);
+            final sub = matches.isNotEmpty ? matches.first : null;
+            return sub != null && sub.program?.id == student.program?.id;
+          }
+          return true;
+        }).toList();
+
         // Just take the first few slots as upcoming classes
         for (var i = 0; i < slots.length && i < 4; i++) {
           final slot = slots[i];

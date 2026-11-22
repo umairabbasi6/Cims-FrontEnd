@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:cims/core/constants/app_colors.dart';
 import 'package:cims/core/constants/app_text_styles.dart';
 import 'package:cims/core/session/app_session.dart';
 import 'package:cims/core/widgets/app_scaffold.dart';
+import 'package:cims/features/admin/students/providers/student_provider.dart';
 
-/// Full-screen search (mobile-first). Mock recents and suggestions.
-class SearchOverlayScreen extends StatefulWidget {
+/// Full-screen search (mobile-first). Dynamic search over live student roster.
+class SearchOverlayScreen extends ConsumerStatefulWidget {
   final void Function(String route) onNavigate;
 
   const SearchOverlayScreen({
@@ -16,25 +18,19 @@ class SearchOverlayScreen extends StatefulWidget {
   });
 
   @override
-  State<SearchOverlayScreen> createState() =>
+  ConsumerState<SearchOverlayScreen> createState() =>
       _SearchOverlayScreenState();
 }
 
 class _SearchOverlayScreenState
-    extends State<SearchOverlayScreen> {
+    extends ConsumerState<SearchOverlayScreen> {
   final _controller = TextEditingController();
 
-  static const _recents = [
-    'DPT attendance May',
-    'Fee invoice 1024',
-    'Student One',
-  ];
-
-  static const _suggestions = [
-    _StudentSuggestion('Student One', 'CIMS-DPT-2104', '/students'),
-    _StudentSuggestion('Student Two', 'CIMS-MLT-2208', '/students'),
-    _StudentSuggestion('Student Three', 'CIMS-RIT-2311', '/students'),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _controller.addListener(() => setState(() {}));
+  }
 
   @override
   void dispose() {
@@ -47,6 +43,18 @@ class _SearchOverlayScreenState
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final muted = isDark ? AppColors.darkTextMuted : AppColors.textMuted;
     final strong = isDark ? AppColors.darkText : AppColors.text;
+
+    final query = _controller.text.trim().toLowerCase();
+    final studentsState = ref.watch(studentsListProvider);
+    final allStudents = studentsState.value ?? [];
+
+    final filteredStudents = query.isEmpty
+        ? allStudents.take(5).toList()
+        : allStudents.where((s) {
+            return s.fullName.toLowerCase().contains(query) ||
+                s.studentIdCode.toLowerCase().contains(query) ||
+                (s.program?.code.toLowerCase().contains(query) ?? false);
+          }).toList();
 
     return AppScaffold(
       title: 'Search',
@@ -68,88 +76,80 @@ class _SearchOverlayScreenState
           TextField(
             controller: _controller,
             autofocus: true,
-            decoration: const InputDecoration(
-              hintText: 'Students, classes, invoices…',
-              prefixIcon: Icon(Icons.search_rounded),
+            decoration: InputDecoration(
+              hintText: 'Search students by name, ID, or program…',
+              prefixIcon: const Icon(Icons.search_rounded),
+              suffixIcon: query.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear_rounded, size: 18),
+                      onPressed: () => _controller.clear(),
+                    )
+                  : null,
             ),
           ),
-          SizedBox(height: 24),
+          const SizedBox(height: 24),
           Text(
-            'Recent',
+            query.isEmpty ? 'Active Students' : 'Search Results (${filteredStudents.length})',
             style: AppTextStyles.body.copyWith(
               fontWeight: FontWeight.w800,
               color: strong,
             ),
           ),
-          SizedBox(height: 10),
-          ..._recents.map(
-            (q) => ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: Icon(
-                Icons.history_rounded,
-                color: muted,
+          const SizedBox(height: 10),
+          if (studentsState.isLoading && allStudents.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 32),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (filteredStudents.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              child: Text(
+                'No matching students found.',
+                style: AppTextStyles.bodySm.copyWith(color: muted),
               ),
-              title: Text(q, style: AppTextStyles.body),
-              onTap: () {
-                _controller.text = q;
-                setState(() {});
-              },
-            ),
-          ),
-          SizedBox(height: 20),
-          Text(
-            'Suggested students',
-            style: AppTextStyles.body.copyWith(
-              fontWeight: FontWeight.w800,
-              color: strong,
-            ),
-          ),
-          SizedBox(height: 10),
-          ..._suggestions.map(
-            (s) => ListTile(
-              contentPadding: const EdgeInsets.symmetric(vertical: 4),
-              leading: CircleAvatar(
-                backgroundColor: AppColors.primarySoft,
-                child: Text(
-                  s.name.split(' ').map((e) => e[0]).take(2).join(),
-                  style: AppTextStyles.caption.copyWith(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w800,
+            )
+          else
+            ...filteredStudents.map(
+              (s) {
+                final parts = s.fullName.trim().split(' ').where((p) => p.isNotEmpty);
+                final initials = parts.take(2).map((e) => e[0].toUpperCase()).join();
+
+                return ListTile(
+                  contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                  leading: CircleAvatar(
+                    backgroundColor: isDark
+                        ? AppColors.primary.withValues(alpha: 0.16)
+                        : AppColors.primarySoft,
+                    child: Text(
+                      initials.isNotEmpty ? initials : 'ST',
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
                   ),
-                ),
-              ),
-              title: Text(
-                s.name,
-                style: AppTextStyles.body.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              subtitle: Text(
-                s.roll,
-                style: AppTextStyles.caption.copyWith(
-                  color: muted,
-                ),
-              ),
-              onTap: () {
-                context.pop();
-                widget.onNavigate(s.route);
+                  title: Text(
+                    s.fullName,
+                    style: AppTextStyles.body.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  subtitle: Text(
+                    '${s.studentIdCode} · ${s.program?.code ?? 'General'}',
+                    style: AppTextStyles.caption.copyWith(
+                      color: muted,
+                    ),
+                  ),
+                  onTap: () {
+                    context.pop();
+                    widget.onNavigate('/students');
+                  },
+                );
               },
             ),
-          ),
         ],
       ),
     );
   }
-}
-
-class _StudentSuggestion {
-  final String name;
-  final String roll;
-  final String route;
-
-  const _StudentSuggestion(
-    this.name,
-    this.roll,
-    this.route,
-  );
 }

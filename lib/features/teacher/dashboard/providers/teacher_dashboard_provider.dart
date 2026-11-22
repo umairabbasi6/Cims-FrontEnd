@@ -5,6 +5,7 @@ import 'package:cims/features/admin/sessions/providers/session_provider.dart';
 import 'package:cims/features/timetable/providers/timetable_provider.dart';
 import 'package:cims/features/timetable/services/timetable_service.dart';
 import 'package:cims/features/teacher/attendance/providers/attendance_api_provider.dart';
+import 'package:cims/features/admin/enrollments/providers/enrollment_provider.dart';
 
 class TeacherDashboardData {
   final String staffName;
@@ -54,6 +55,14 @@ final teacherDashboardProvider = FutureProvider.autoDispose<TeacherDashboardData
   final schedule = <Map<String, dynamic>>[];
   final trend = List<double>.filled(7, 0.0);
   double calculatedAvgAtt = 82.5;
+  List<TimetableSlot> slots = [];
+
+  String formatTime(String t) {
+    if (t.length >= 5) {
+      return t.substring(0, 5);
+    }
+    return t;
+  }
 
   if (sessionId != null) {
     // 1. Fetch Assigned Subjects
@@ -73,7 +82,6 @@ final teacherDashboardProvider = FutureProvider.autoDispose<TeacherDashboardData
     } catch (_) {}
 
     // 2. Fetch Timetable Slots and filter for today
-    List<TimetableSlot> slots = [];
     try {
       slots = await ref.watch(timetableSlotsListProvider((
         sessionId: sessionId,
@@ -85,13 +93,6 @@ final teacherDashboardProvider = FutureProvider.autoDispose<TeacherDashboardData
     final todayDay = DateFormat('EEEE').format(DateTime.now());
     final todaySlots = slots.where((s) => s.dayOfWeek.toLowerCase() == todayDay.toLowerCase()).toList();
     todaySlots.sort((a, b) => a.startTime.compareTo(b.startTime));
-
-    String formatTime(String t) {
-      if (t.length >= 5) {
-        return t.substring(0, 5);
-      }
-      return t;
-    }
 
     for (var slot in todaySlots) {
       schedule.add({
@@ -216,33 +217,33 @@ final teacherDashboardProvider = FutureProvider.autoDispose<TeacherDashboardData
     nextClassRoom = '—';
   }
 
-  // Dynamic Assigned Classes list
+  // Dynamic Assigned Classes list with real enrollments and schedule
   final assignedClassesList = <Map<String, dynamic>>[];
+  final enrollmentsRepo = ref.read(enrollmentRepositoryProvider);
+
   for (var i = 0; i < subjects.length; i++) {
     final s = subjects[i];
-    final id = s['id'] ?? 0;
-    
-    String stageStr = 'Semester 1';
-    if (id % 3 == 0) {
-      stageStr = '6th Sem';
-    } else if (id % 3 == 1) {
-      stageStr = '4th Sem';
+    final id = s['id'] as int? ?? 0;
+
+    int realStudentsCount = 0;
+    if (sessionId != null && id > 0) {
+      try {
+        final enrolls = await enrollmentsRepo.subjectEnrollments(id, sessionId: sessionId);
+        realStudentsCount = enrolls.length;
+      } catch (_) {}
+    }
+
+    // Match timetable slot for this subject
+    final subjectSlots = slots.where((sl) => sl.subjectId == id).toList();
+    String nextSession = 'No scheduled slot';
+    String className = '${s['code'] ?? 'SUB'} Class';
+    if (subjectSlots.isNotEmpty) {
+      final sl = subjectSlots.first;
+      nextSession = '${sl.dayOfWeek} ${formatTime(sl.startTime)} · ${sl.room ?? 'Room'}';
+      className = '${currentStaff.department?.code ?? 'Dept'} Stage ${sl.stage}';
     } else {
-      stageStr = '2nd Sem';
+      className = '${currentStaff.department?.code ?? 'Dept'} Section ${s['section'] ?? 'A'}';
     }
-
-    final deptCode = currentStaff.department?.code ?? 'DPT';
-    final className = '$deptCode $stageStr';
-
-    String nextSession = 'Mon 09:00 AM · Room 201';
-    if (i == 1) {
-      nextSession = 'Tue 11:00 AM · Room 105';
-    } else if (i == 2) {
-      nextSession = 'Thu 01:00 PM · Skills Lab';
-    }
-
-    final studentsCount = 35 + (id % 15);
-    final avgAttendanceVal = 70.0 + (id % 20);
 
     assignedClassesList.add({
       'id': id,
@@ -250,9 +251,9 @@ final teacherDashboardProvider = FutureProvider.autoDispose<TeacherDashboardData
       'code': s['code'],
       'className': className,
       'nextSession': nextSession,
-      'students': studentsCount,
-      'avgAttendance': avgAttendanceVal.round(),
-      'status': avgAttendanceVal >= 80 ? 'Active' : 'Review',
+      'students': realStudentsCount,
+      'avgAttendance': calculatedAvgAtt.round(),
+      'status': realStudentsCount > 0 ? 'Active' : 'No Students',
     });
   }
 
@@ -268,8 +269,8 @@ final teacherDashboardProvider = FutureProvider.autoDispose<TeacherDashboardData
     nextClassSubject: nextClassSubject,
     nextClassTime: nextClassTime,
     nextClassRoom: nextClassRoom,
-    attendancePendingCount: subjects.isNotEmpty ? 1 : 0,
-    marksPendingCount: subjects.length * 6,
+    attendancePendingCount: 0,
+    marksPendingCount: 0,
     assignedClassesList: assignedClassesList,
     attendanceTrend: trend,
   );

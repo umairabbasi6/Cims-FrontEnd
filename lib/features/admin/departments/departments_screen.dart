@@ -14,6 +14,8 @@ import 'package:cims/core/session/app_session.dart';
 import 'package:cims/features/admin/departments/models/department_category.dart';
 import 'package:cims/features/admin/departments/models/department_model.dart';
 import 'package:cims/features/admin/departments/providers/department_provider.dart';
+import 'package:cims/features/admin/programs/providers/program_provider.dart';
+import 'package:cims/features/admin/students/providers/student_provider.dart';
 
 import 'package:cims/features/admin/departments/add_department_modal.dart';
 
@@ -94,11 +96,6 @@ class _DepartmentsScreenState
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final bool isMobile = screenWidth < 600;
-    final bool isTablet = screenWidth >= 600 && screenWidth < 1024;
-    final bool isDesktop = screenWidth >= 1024;
-
     final isDark =
         Theme.of(context).brightness ==
             Brightness.dark;
@@ -115,9 +112,24 @@ class _DepartmentsScreenState
           departmentsData,
         );
 
-    final totalPrograms = 0;
+    final programsList = ref.watch(programsProvider).value ?? [];
+    final studentsList = ref.watch(studentsListProvider).value ?? [];
+    final totalPrograms = programsList.length;
+    final totalStudents = studentsList.length;
 
-    final totalStudents = 0;
+    final programToDept = <int, int>{};
+    final programsCountByDept = <int, int>{};
+    for (final p in programsList) {
+      programToDept[p.id] = p.department.id;
+      programsCountByDept[p.department.id] = (programsCountByDept[p.department.id] ?? 0) + 1;
+    }
+    final studentsCountByDept = <int, int>{};
+    for (final s in studentsList) {
+      final deptId = programToDept[s.program?.id];
+      if (deptId != null) {
+        studentsCountByDept[deptId] = (studentsCountByDept[deptId] ?? 0) + 1;
+      }
+    }
 
     final activeDepartments =
         departmentsData
@@ -279,6 +291,12 @@ class _DepartmentsScreenState
               isDark:
                   isDark,
 
+              programsCountByDept:
+                  programsCountByDept,
+
+              studentsCountByDept:
+                  studentsCountByDept,
+
               onEdit:
                   (dept) => _showAddModal(
                     context,
@@ -314,10 +332,7 @@ class _DepartmentsError extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final bool isMobile = screenWidth < 600;
-    final bool isTablet = screenWidth >= 600 && screenWidth < 1024;
-    final bool isDesktop = screenWidth >= 1024;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 48),
@@ -329,7 +344,7 @@ class _DepartmentsError extends StatelessWidget {
               message,
               textAlign: TextAlign.center,
               style: AppTextStyles.body.copyWith(
-                color: AppColors.darkTextMuted,
+                color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
               ),
             ),
             SizedBox(height: 16),
@@ -363,9 +378,8 @@ class _StatsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final bool isMobile = screenWidth < 600;
-    final bool isTablet = screenWidth >= 600 && screenWidth < 1024;
+    final bool isMobile = Responsive.isMobile(context);
+    final bool isTablet = Responsive.isTablet(context);
 
     final card1 = StatCard(
       label: 'Departments',
@@ -493,11 +507,7 @@ class _Toolbar
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final bool isMobile = screenWidth < 600;
-    final bool isTablet = screenWidth >= 600 && screenWidth < 1024;
-    final bool isDesktop = screenWidth >= 1024;
-
+    final bool isMobile = Responsive.isMobile(context);
     final isDark =
         Theme.of(context)
                 .brightness ==
@@ -518,13 +528,13 @@ class _Toolbar
           fillColor: isDark ? AppColors.darkSurface : AppColors.surface,
           contentPadding: EdgeInsets.zero,
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(AppConstants.radius),
             borderSide: BorderSide(
               color: isDark ? AppColors.darkBorder : AppColors.border,
             ),
           ),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(AppConstants.radius),
             borderSide: BorderSide(
               color: isDark ? AppColors.darkBorder : AppColors.border,
             ),
@@ -538,15 +548,15 @@ class _Toolbar
       height: 40,
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkSurface : AppColors.surface,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppConstants.radius),
         border: Border.all(
           color: isDark ? AppColors.darkBorder : AppColors.border,
         ),
       ),
       child: DropdownButton<String>(
         value: status,
-        underline: SizedBox(),
-        dropdownColor: isDark ? AppColors.darkSurfaceAlt : Colors.white,
+        underline: const SizedBox(),
+        dropdownColor: isDark ? AppColors.darkSurfaceAlt : AppColors.surface,
         style: AppTextStyles.bodySm.copyWith(
           color: isDark ? AppColors.darkText : AppColors.text,
           fontWeight: FontWeight.w600,
@@ -628,11 +638,6 @@ class _CategoryTabs
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final bool isMobile = screenWidth < 600;
-    final bool isTablet = screenWidth >= 600 && screenWidth < 1024;
-    final bool isDesktop = screenWidth >= 1024;
-
     final isDark =
         Theme.of(context)
                 .brightness ==
@@ -835,6 +840,9 @@ class _DepartmentTable
 
   final bool isDark;
 
+  final Map<int, int> programsCountByDept;
+  final Map<int, int> studentsCountByDept;
+
   final void Function(
     DepartmentModel,
   )
@@ -843,16 +851,13 @@ class _DepartmentTable
   const _DepartmentTable({
     required this.depts,
     required this.isDark,
+    required this.programsCountByDept,
+    required this.studentsCountByDept,
     required this.onEdit,
   });
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final bool isMobile = screenWidth < 600;
-    final bool isTablet = screenWidth >= 600 && screenWidth < 1024;
-    final bool isDesktop = screenWidth >= 1024;
-
     final bg =
         isDark
             ? AppColors.darkSurface
@@ -904,6 +909,8 @@ class _DepartmentTable
                 (d) => _DepartmentRow(
                   dept: d,
                   border: border,
+                  programsCount: programsCountByDept[d.id] ?? 0,
+                  studentsCount: studentsCountByDept[d.id] ?? 0,
                   onEdit: () => onEdit(d),
                 ),
               ),
@@ -924,11 +931,6 @@ class _TableHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final bool isMobile = screenWidth < 600;
-    final bool isTablet = screenWidth >= 600 && screenWidth < 1024;
-    final bool isDesktop = screenWidth >= 1024;
-
     final cols = [
       'DEPARTMENT',
       'CODE',
@@ -973,11 +975,15 @@ class _TableHeader extends StatelessWidget {
 class _DepartmentRow extends StatefulWidget {
   final DepartmentModel dept;
   final Color border;
+  final int programsCount;
+  final int studentsCount;
   final VoidCallback onEdit;
 
   const _DepartmentRow({
     required this.dept,
     required this.border,
+    required this.programsCount,
+    required this.studentsCount,
     required this.onEdit,
   });
 
@@ -990,11 +996,6 @@ class _DepartmentRowState extends State<_DepartmentRow> {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final bool isMobile = screenWidth < 600;
-    final bool isTablet = screenWidth >= 600 && screenWidth < 1024;
-    final bool isDesktop = screenWidth >= 1024;
-
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final color = [
@@ -1099,7 +1100,7 @@ class _DepartmentRowState extends State<_DepartmentRow> {
             // PROGRAMS
             Expanded(
               child: Text(
-                '0',
+                '${widget.programsCount}',
                 style: AppTextStyles.bodySm.copyWith(
                   color: isDark ? AppColors.darkText : AppColors.text,
                   fontWeight: FontWeight.w600,
@@ -1110,7 +1111,7 @@ class _DepartmentRowState extends State<_DepartmentRow> {
             // STUDENTS
             Expanded(
               child: Text(
-                '0',
+                '${widget.studentsCount}',
                 style: AppTextStyles.bodySm.copyWith(
                   color: isDark ? AppColors.darkText : AppColors.text,
                   fontWeight: FontWeight.w600,
@@ -1164,11 +1165,6 @@ class _MobileList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final bool isMobile = screenWidth < 600;
-    final bool isTablet = screenWidth >= 600 && screenWidth < 1024;
-    final bool isDesktop = screenWidth >= 1024;
-
     return ListView.builder(
       physics: const NeverScrollableScrollPhysics(),
       shrinkWrap: true,
@@ -1201,11 +1197,6 @@ class _MobileCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final bool isMobile = screenWidth < 600;
-    final bool isTablet = screenWidth >= 600 && screenWidth < 1024;
-    final bool isDesktop = screenWidth >= 1024;
-
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
@@ -1227,7 +1218,9 @@ class _MobileCard extends StatelessWidget {
                 ),
                 SizedBox(height: 6),
                 Text(dept.code,
-                  style: AppTextStyles.bodySm.copyWith(color: AppColors.textMuted),
+                  style: AppTextStyles.bodySm.copyWith(
+                    color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                  ),
                 ),
               ],
             ),
@@ -1270,10 +1263,7 @@ class _EmptyState
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final bool isMobile = screenWidth < 600;
-    final bool isTablet = screenWidth >= 600 && screenWidth < 1024;
-    final bool isDesktop = screenWidth >= 1024;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
       padding:
@@ -1293,7 +1283,7 @@ class _EmptyState
             size: 54,
 
             color:
-                AppColors.textMuted,
+                isDark ? AppColors.darkTextMuted : AppColors.textMuted,
           ),
 
           SizedBox(
@@ -1318,7 +1308,7 @@ class _EmptyState
                 AppTextStyles.body
                     .copyWith(
                       color:
-                          AppColors.textMuted,
+                          isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                     ),
           ),
         ],
@@ -1344,11 +1334,6 @@ class _ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final bool isMobile = screenWidth < 600;
-    final bool isTablet = screenWidth >= 600 && screenWidth < 1024;
-    final bool isDesktop = screenWidth >= 1024;
-
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return InkWell(
       onTap: onTap,

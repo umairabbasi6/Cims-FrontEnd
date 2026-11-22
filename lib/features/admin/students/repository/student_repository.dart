@@ -148,5 +148,13 @@ class StudentRepository {
   Future<StudentApiModel> getStudentByRegistration(String registrationNumber) {
     return _service.getStudentByRegistration(registrationNumber);
   }
+
+  Future<String> bulkPromoteStudents(int sessionId) {
+    return _service.bulkPromoteStudents(sessionId);
+  }
+
+  Future<String> bulkGraduateStudents() {
+    return _service.bulkGraduateStudents();
+  }
 }
 

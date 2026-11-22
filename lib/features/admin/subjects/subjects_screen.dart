@@ -18,6 +18,7 @@ import 'package:cims/features/admin/programs/models/program_model.dart';
 import 'package:cims/features/admin/staff/providers/staff_provider.dart';
 import 'package:cims/features/admin/staff/models/staff_api_model.dart';
 import 'package:cims/features/admin/sessions/providers/session_provider.dart';
+import 'package:cims/features/admin/enrollments/providers/enrollment_provider.dart';
 import 'package:cims/core/utils/csv_export_helper.dart' as csv_helper;
 
 class SubjectModel {
@@ -1025,7 +1026,7 @@ class _ViewSubjectModal extends StatelessWidget {
 class _AddSubjectModal extends ConsumerStatefulWidget {
   final SubjectModel? subject;
 
-  const _AddSubjectModal({super.key, this.subject});
+  const _AddSubjectModal({this.subject});
 
   @override
   ConsumerState<_AddSubjectModal> createState() => _AddSubjectModalState();
@@ -1038,11 +1039,15 @@ class _AddSubjectModalState extends ConsumerState<_AddSubjectModal> {
   late final TextEditingController _creditsCtrl;
   
   bool _hasPractical = false;
+  bool _autoEnrollStudents = false;
   bool _saving = false;
 
   int? _selectedProgramId;
   int? _selectedStage;
   int? _selectedTeacherId;
+
+  int _existingEnrolledCount = 0;
+  bool _checkingEnrollments = false;
 
   bool get _isEdit => widget.subject != null;
 
@@ -1059,6 +1064,28 @@ class _AddSubjectModalState extends ConsumerState<_AddSubjectModal> {
       _selectedProgramId = s.programId;
       _selectedStage = s.stageNum;
       _selectedTeacherId = s.apiModel.assignedTeacher?.id;
+      _fetchExistingEnrollments(s.id);
+    }
+  }
+
+  Future<void> _fetchExistingEnrollments(int subjectId) async {
+    setState(() => _checkingEnrollments = true);
+    try {
+      final enrolls = await ref.read(enrollmentRepositoryProvider).subjectEnrollments(subjectId);
+      if (mounted) {
+        setState(() {
+          _existingEnrolledCount = enrolls.length;
+          if (_existingEnrolledCount > 0) {
+            _autoEnrollStudents = true;
+          }
+          _checkingEnrollments = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('[EditSubject] Error fetching enrollments: $e');
+      if (mounted) {
+        setState(() => _checkingEnrollments = false);
+      }
     }
   }
 
@@ -1158,6 +1185,26 @@ class _AddSubjectModalState extends ConsumerState<_AddSubjectModal> {
         }
       }
 
+      String? enrollNotice;
+      if (_autoEnrollStudents && currentSession != null && _selectedProgramId != null && _selectedStage != null) {
+        try {
+          final res = await ref.read(enrollmentRepositoryProvider).bulkEnroll({
+            'program_id': _selectedProgramId!,
+            'stage': _selectedStage!,
+            'session_id': currentSession.id,
+          });
+          final enrolled = res['enrolled'] as int? ?? 0;
+          if (enrolled > 0) {
+            enrollNotice = '$enrolled new student(s) enrolled';
+          } else if (_existingEnrolledCount > 0) {
+            enrollNotice = '$_existingEnrolledCount student(s) already enrolled';
+          }
+          ref.invalidate(enrollmentsTypedListProvider);
+        } catch (e) {
+          debugPrint('[AddSubject] Auto-enroll notice: $e');
+        }
+      }
+
       ref.invalidate(subjectsListProvider);
 
       if (!mounted) return;
@@ -1165,7 +1212,9 @@ class _AddSubjectModalState extends ConsumerState<_AddSubjectModal> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            _isEdit ? 'Subject updated' : 'Subject created',
+            enrollNotice != null
+                ? '${_isEdit ? "Subject updated" : "Subject created"} ($enrollNotice)'
+                : (_isEdit ? 'Subject updated' : 'Subject created'),
           ),
         ),
       );
@@ -1352,6 +1401,41 @@ class _AddSubjectModalState extends ConsumerState<_AddSubjectModal> {
               ),
               value: _hasPractical,
               onChanged: (v) => setState(() => _hasPractical = v),
+              activeThumbColor: AppColors.primary,
+            ),
+            const SizedBox(height: 12),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(
+                'ENROLL CLASS STUDENTS',
+                style: AppTextStyles.label.copyWith(
+                  color: isDark ? AppColors.darkText : AppColors.text,
+                ),
+              ),
+              subtitle: _checkingEnrollments
+                  ? Text(
+                      'Checking enrolled students...',
+                      style: AppTextStyles.caption.copyWith(
+                        color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                      ),
+                    )
+                  : Text(
+                      _existingEnrolledCount > 0
+                          ? '✓ $_existingEnrolledCount student(s) currently enrolled in this subject'
+                          : (_autoEnrollStudents
+                              ? 'Will enroll all active class students on save'
+                              : 'Auto-enroll all active students in this class / semester for current session'),
+                      style: AppTextStyles.caption.copyWith(
+                        color: (_existingEnrolledCount > 0 || _autoEnrollStudents)
+                            ? AppColors.success
+                            : (isDark ? AppColors.darkTextMuted : AppColors.textMuted),
+                        fontWeight: (_existingEnrolledCount > 0 || _autoEnrollStudents)
+                            ? FontWeight.w600
+                            : FontWeight.normal,
+                      ),
+                    ),
+              value: _autoEnrollStudents,
+              onChanged: (v) => setState(() => _autoEnrollStudents = v),
               activeThumbColor: AppColors.primary,
             ),
           ],

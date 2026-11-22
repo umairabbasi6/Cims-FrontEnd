@@ -8,8 +8,6 @@ import 'package:cims/features/admin/fees/providers/fees_api_provider.dart';
 import 'package:cims/features/admin/students/providers/student_provider.dart';
 import 'package:cims/features/admin/students/models/student_api_model.dart';
 import 'package:cims/features/admin/sessions/providers/session_provider.dart';
-import 'package:cims/features/admin/programs/providers/program_provider.dart';
-import 'package:cims/features/admin/programs/models/program_model.dart';
 
 class CreateInvoiceModal extends ConsumerStatefulWidget {
   const CreateInvoiceModal({
@@ -122,19 +120,6 @@ class _CreateInvoiceModalState extends ConsumerState<CreateInvoiceModal> {
       initialDate: _dueDate ?? DateTime.now(),
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
-      builder: (context, child) {
-        return Theme(
-          data: ThemeData.dark().copyWith(
-            colorScheme: const ColorScheme.dark(
-              primary: AppColors.primary,
-              onPrimary: Colors.white,
-              surface: AppColors.darkSurface,
-              onSurface: Colors.white,
-            ),
-          ),
-          child: child!,
-        );
-      },
     );
     if (picked != null) {
       setState(() => _dueDate = picked);
@@ -166,7 +151,10 @@ class _CreateInvoiceModalState extends ConsumerState<CreateInvoiceModal> {
 
     StudentApiModel? finalStudent = _selectedStudent;
     if (finalStudent != null && _autocompleteCtrl != null) {
-      final disp = "${finalStudent.fullName} - ${finalStudent.studentIdCode ?? finalStudent.registrationNumber ?? ''}";
+      final code = finalStudent.studentIdCode.isNotEmpty
+          ? finalStudent.studentIdCode
+          : finalStudent.registrationNumber;
+      final disp = "${finalStudent.fullName} - $code";
       if (_autocompleteCtrl!.text != disp) {
         finalStudent = null;
       }
@@ -185,16 +173,14 @@ class _CreateInvoiceModalState extends ConsumerState<CreateInvoiceModal> {
 
       final feeTypeStr = _feeType == 'Tuition Fee' ? 'Tuition' : _feeType;
 
-      if (finalStudent != null) {
-        await feesRepo.createAssignment({
-          'student_id': finalStudent.id,
-          'fee_type': feeTypeStr,
-          'amount': amount,
-          'due_date': DateFormat('yyyy-MM-dd').format(_dueDate!),
-          'academic_session_id': _selectedSessionId,
-          'stage': finalStudent.currentStage,
-        });
-      }
+      await feesRepo.createAssignment({
+        'student_id': finalStudent.id,
+        'fee_type': feeTypeStr,
+        'amount': amount,
+        'due_date': DateFormat('yyyy-MM-dd').format(_dueDate!),
+        'academic_session_id': _selectedSessionId,
+        'stage': finalStudent.currentStage,
+      });
 
       ref.invalidate(pendingAssignmentsProvider);
       ref.invalidate(feesDashboardProvider);
@@ -217,18 +203,27 @@ class _CreateInvoiceModalState extends ConsumerState<CreateInvoiceModal> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final studentsAsync = ref.watch(studentsListProvider);
     final sessionsAsync = ref.watch(sessionsListProvider);
-    final programsAsync = ref.watch(programsProvider);
 
     return Dialog(
       backgroundColor: Colors.transparent,
       child: Container(
         width: 560,
         decoration: BoxDecoration(
-          color: AppColors.darkSurface,
+          color: isDark ? AppColors.darkSurface : Colors.white,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: AppColors.darkBorder),
+          border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
+          boxShadow: isDark
+              ? null
+              : [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 16,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -242,11 +237,19 @@ class _CreateInvoiceModalState extends ConsumerState<CreateInvoiceModal> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Create Invoice', style: AppTextStyles.h2),
+                        Text(
+                          'Create Invoice',
+                          style: AppTextStyles.h2.copyWith(
+                            color: isDark ? Colors.white : AppColors.text,
+                          ),
+                        ),
                         const SizedBox(height: 4),
-                        Text('Fill the details below',
-                            style: AppTextStyles.body.copyWith(
-                                color: AppColors.darkTextMuted)),
+                        Text(
+                          'Fill the details below',
+                          style: AppTextStyles.body.copyWith(
+                            color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -258,16 +261,16 @@ class _CreateInvoiceModalState extends ConsumerState<CreateInvoiceModal> {
                       height: 42,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: AppColors.darkBorder),
+                        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
                       ),
                       child: Icon(Icons.close_rounded,
-                          color: AppColors.darkTextMuted),
+                          color: isDark ? AppColors.darkTextMuted : AppColors.textMuted),
                     ),
                   ),
                 ],
               ),
             ),
-            Divider(height: 1, color: AppColors.darkBorder),
+            Divider(height: 1, color: isDark ? AppColors.darkBorder : AppColors.border),
             Padding(
               padding: const EdgeInsets.all(24),
               child: Column(
@@ -275,13 +278,17 @@ class _CreateInvoiceModalState extends ConsumerState<CreateInvoiceModal> {
                 children: [
                   Text('STUDENT',
                       style: AppTextStyles.label.copyWith(
-                          color: AppColors.darkTextMuted, letterSpacing: 1.0)),
+                          color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary, letterSpacing: 1.0)),
                   const SizedBox(height: 8),
                   studentsAsync.when(
                     data: (students) {
                       return Autocomplete<StudentApiModel>(
-                        displayStringForOption: (s) =>
-                            "${s.fullName} - ${s.studentIdCode ?? s.registrationNumber ?? ''}",
+                        displayStringForOption: (s) {
+                          final code = s.studentIdCode.isNotEmpty
+                              ? s.studentIdCode
+                              : s.registrationNumber;
+                          return "${s.fullName} - $code";
+                        },
                         optionsBuilder: (textEditingValue) {
                           if (textEditingValue.text.isEmpty) {
                             return const Iterable<StudentApiModel>.empty();
@@ -290,11 +297,10 @@ class _CreateInvoiceModalState extends ConsumerState<CreateInvoiceModal> {
                           return students.where((s) {
                             final nameMatch =
                                 s.fullName.toLowerCase().contains(query);
-                            final codeMatch = (s.studentIdCode ??
-                                    s.registrationNumber ??
-                                    '')
-                                .toLowerCase()
-                                .contains(query);
+                            final code = s.studentIdCode.isNotEmpty
+                                ? s.studentIdCode
+                                : s.registrationNumber;
+                            final codeMatch = code.toLowerCase().contains(query);
                             return nameMatch || codeMatch;
                           });
                         },
@@ -314,9 +320,15 @@ class _CreateInvoiceModalState extends ConsumerState<CreateInvoiceModal> {
                               hintText: 'Search by name or roll no...',
                             ),
                             onChanged: (text) {
-                              final currentSelectedText = _selectedStudent == null
+                              final sel = _selectedStudent;
+                              final code = sel != null
+                                  ? (sel.studentIdCode.isNotEmpty
+                                      ? sel.studentIdCode
+                                      : sel.registrationNumber)
+                                  : '';
+                              final currentSelectedText = sel == null
                                   ? ''
-                                  : "${_selectedStudent!.fullName} - ${_selectedStudent!.studentIdCode ?? _selectedStudent!.registrationNumber ?? ''}";
+                                  : "${sel.fullName} - $code";
                               if (text != currentSelectedText && _selectedStudent != null) {
                                 setState(() {
                                   _selectedStudent = null;
@@ -337,16 +349,16 @@ class _CreateInvoiceModalState extends ConsumerState<CreateInvoiceModal> {
                     const SizedBox(height: 20),
                     Text('PROGRAM',
                         style: AppTextStyles.label.copyWith(
-                            color: AppColors.darkTextMuted, letterSpacing: 1.0)),
+                            color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary, letterSpacing: 1.0)),
                     const SizedBox(height: 8),
                     InputDecorator(
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         filled: true,
-                        fillColor: AppColors.darkSurfaceAlt,
+                        fillColor: isDark ? AppColors.darkSurfaceAlt : AppColors.surfaceAlt,
                       ),
                       child: Text(
                         _selectedStudent!.program!.name,
-                        style: const TextStyle(color: Colors.white),
+                        style: TextStyle(color: isDark ? Colors.white : AppColors.text),
                       ),
                     ),
                   ],
@@ -359,7 +371,7 @@ class _CreateInvoiceModalState extends ConsumerState<CreateInvoiceModal> {
                           children: [
                             Text('FEE TYPE',
                                 style: AppTextStyles.label.copyWith(
-                                    color: AppColors.darkTextMuted,
+                                    color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
                                     letterSpacing: 1.0)),
                             const SizedBox(height: 8),
                             DropdownButtonFormField<String>(
@@ -386,7 +398,7 @@ class _CreateInvoiceModalState extends ConsumerState<CreateInvoiceModal> {
                           children: [
                             Text('AMOUNT (PKR)',
                                 style: AppTextStyles.label.copyWith(
-                                    color: AppColors.darkTextMuted,
+                                    color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
                                     letterSpacing: 1.0)),
                             const SizedBox(height: 8),
                             TextField(
@@ -420,7 +432,7 @@ class _CreateInvoiceModalState extends ConsumerState<CreateInvoiceModal> {
                           children: [
                             Text('DUE DATE',
                                 style: AppTextStyles.label.copyWith(
-                                    color: AppColors.darkTextMuted,
+                                    color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
                                     letterSpacing: 1.0)),
                             const SizedBox(height: 8),
                             InkWell(
@@ -437,8 +449,8 @@ class _CreateInvoiceModalState extends ConsumerState<CreateInvoiceModal> {
                                       : 'mm/dd/yyyy',
                                   style: TextStyle(
                                     color: _dueDate != null
-                                        ? Colors.white
-                                        : AppColors.darkTextMuted,
+                                        ? (isDark ? Colors.white : AppColors.text)
+                                        : (isDark ? AppColors.darkTextMuted : AppColors.textMuted),
                                   ),
                                 ),
                               ),
@@ -453,7 +465,7 @@ class _CreateInvoiceModalState extends ConsumerState<CreateInvoiceModal> {
                           children: [
                             Text('TERM',
                                 style: AppTextStyles.label.copyWith(
-                                    color: AppColors.darkTextMuted,
+                                    color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
                                     letterSpacing: 1.0)),
                             const SizedBox(height: 8),
                             sessionsAsync.when(
@@ -488,7 +500,7 @@ class _CreateInvoiceModalState extends ConsumerState<CreateInvoiceModal> {
                 ],
               ),
             ),
-            Divider(height: 1, color: AppColors.darkBorder),
+            Divider(height: 1, color: isDark ? AppColors.darkBorder : AppColors.border),
             Padding(
               padding: const EdgeInsets.all(24),
               child: Row(

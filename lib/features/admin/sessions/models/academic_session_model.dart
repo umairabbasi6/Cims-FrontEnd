@@ -6,6 +6,7 @@ class AcademicSessionModel {
   final bool isCurrent;
   final bool isActive;
   final DateTime createdAt;
+  final int studentsCount;
 
   const AcademicSessionModel({
     required this.id,
@@ -15,6 +16,7 @@ class AcademicSessionModel {
     required this.isCurrent,
     required this.isActive,
     required this.createdAt,
+    this.studentsCount = 0,
   });
 
   factory AcademicSessionModel.fromJson(
@@ -34,6 +36,7 @@ class AcademicSessionModel {
       createdAt: DateTime.parse(
         json['created_at'] as String,
       ),
+      studentsCount: json['students_count'] as int? ?? 0,
     );
   }
 

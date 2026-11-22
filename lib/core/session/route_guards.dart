@@ -6,6 +6,7 @@ abstract final class RouteGuards {
   static const _programs = '/programs';
   static const _sessions = '/sessions';
   static const _subjects = '/subjects';
+  static const _enrollments = '/enrollments';
   static const _timetable = '/timetable';
   static const _staff = '/staff';
   static const _students = '/students';
@@ -50,6 +51,7 @@ abstract final class RouteGuards {
     _programs,
     _sessions,
     _subjects,
+    _enrollments,
     _timetable,
     _staff,
     _students,

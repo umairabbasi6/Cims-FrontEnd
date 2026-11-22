@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:cims/core/constants/app_colors.dart';
 import 'package:cims/core/constants/app_text_styles.dart';
+import 'package:cims/core/utils/responsive.dart';
 import 'package:cims/core/widgets/app_scaffold.dart';
 import 'package:cims/core/widgets/badge_chip.dart';
 import 'package:cims/core/widgets/avatar.dart';
@@ -21,8 +22,7 @@ class StudentResultsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final bool isMobile = screenWidth < 600;
+    final bool isMobile = Responsive.isMobile(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final studentAsync = ref.watch(currentStudentProvider);
@@ -400,68 +400,80 @@ class StudentResultsScreen extends ConsumerWidget {
         ? name.split(' ').where((w) => w.isNotEmpty).take(2).map((w) => w[0].toUpperCase()).join()
         : name[0].toUpperCase();
 
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    return Builder(
+      builder: (context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        return Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Avatar(text: initials),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      name,
-                      style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w700),
+              Row(
+                children: [
+                  Avatar(text: initials),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          name,
+                          style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w700),
+                        ),
+                        Text(
+                          code,
+                          style: TextStyle(
+                            color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                          ),
+                        ),
+                      ],
                     ),
-                    Text(
-                      code,
-                      style: const TextStyle(color: AppColors.darkTextMuted),
-                    ),
-                  ],
-                ),
+                  ),
+                  BadgeChip(
+                    label: grade,
+                    tone: grade.contains('F') ? BadgeTone.danger : BadgeTone.success,
+                  ),
+                ],
               ),
-              BadgeChip(
-                label: grade,
-                tone: grade.contains('F') ? BadgeTone.danger : BadgeTone.success,
+              const SizedBox(height: 14),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _buildMetric('THEORY', theory),
+                  _buildMetric('PRACTICAL', practical),
+                  _buildMetric('TOTAL', total),
+                  _buildMetric('GPA', gpa),
+                ],
               ),
             ],
           ),
-          const SizedBox(height: 14),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _buildMetric('THEORY', theory),
-              _buildMetric('PRACTICAL', practical),
-              _buildMetric('TOTAL', total),
-              _buildMetric('GPA', gpa),
-            ],
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
   Widget _buildMetric(String label, String value) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: AppTextStyles.caption.copyWith(
-            fontSize: 10,
-            color: AppColors.darkTextMuted,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: AppTextStyles.body.copyWith(fontWeight: FontWeight.bold),
-        ),
-      ],
+    return Builder(
+      builder: (context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: AppTextStyles.caption.copyWith(
+                fontSize: 10,
+                color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              value,
+              style: AppTextStyles.body.copyWith(fontWeight: FontWeight.bold),
+            ),
+          ],
+        );
+      },
     );
   }
 }

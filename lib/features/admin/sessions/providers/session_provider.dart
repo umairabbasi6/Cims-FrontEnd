@@ -24,3 +24,6 @@ final currentAcademicSessionProvider =
     return repo.getCurrentWithFallback();
   },
 );
+
+/// Alias for backwards compatibility across feature screens.
+final sessionsProvider = sessionsListProvider;

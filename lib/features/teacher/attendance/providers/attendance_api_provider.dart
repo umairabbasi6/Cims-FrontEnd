@@ -11,6 +11,17 @@ class AttendanceSessionsArgs {
   final int? sessionId;
 
   const AttendanceSessionsArgs({this.subjectId, this.sessionId});
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is AttendanceSessionsArgs &&
+          runtimeType == other.runtimeType &&
+          subjectId == other.subjectId &&
+          sessionId == other.sessionId;
+
+  @override
+  int get hashCode => subjectId.hashCode ^ sessionId.hashCode;
 }
 
 final attendanceSessionsListProvider = FutureProvider.autoDispose

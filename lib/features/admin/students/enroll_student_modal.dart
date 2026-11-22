@@ -11,6 +11,7 @@ import 'package:cims/features/admin/students/models/student_api_model.dart';
 import 'package:cims/features/admin/students/providers/student_provider.dart';
 import 'package:cims/features/admin/programs/providers/program_provider.dart';
 import 'package:cims/features/admin/sessions/providers/session_provider.dart';
+import 'package:cims/features/admin/dashboard/providers/admin_dashboard_provider.dart';
 
 class EnrollStudentModal extends ConsumerStatefulWidget {
   final StudentApiModel? studentToEdit;
@@ -83,13 +84,9 @@ class _EnrollStudentModalState
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final bool isMobile = screenWidth < 600;
-    final bool isTablet = screenWidth >= 600 && screenWidth < 1024;
-    final bool isDesktop = screenWidth >= 1024;
-
     final isPhone = Responsive.isMobile(context);
     final isEditing = widget.studentToEdit != null;
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
     final programsAsync = ref.watch(programsProvider);
     final sessionsAsync = ref.watch(sessionsListProvider);
@@ -139,13 +136,17 @@ class _EnrollStudentModalState
 
     final sessionDropdown = sessionsAsync.when(
       data: (list) {
-        final currentActive = selectedSessionId ?? (list.isNotEmpty ? list.first.id : null);
+        final currentSession = list.where((s) => s.isCurrent).firstOrNull;
+        final currentActive = selectedSessionId ?? (currentSession?.id ?? (list.isNotEmpty ? list.first.id : null));
         return _idDropdown(
           label: 'ADMISSION SESSION',
           value: currentActive,
           items: list.map((s) => DropdownMenuItem<int>(
             value: s.id,
-            child: Text(s.name, overflow: TextOverflow.ellipsis),
+            child: Text(
+              '${s.name}${s.isCurrent ? ' (Current)' : ''}',
+              overflow: TextOverflow.ellipsis,
+            ),
           )).toList(),
           onChanged: (v) => setState(() => selectedSessionId = v),
           hintText: 'Select session',
@@ -224,14 +225,23 @@ class _EnrollStudentModalState
           maxWidth: isPhone ? double.infinity : 720,
         ),
         decoration: BoxDecoration(
-          color: AppColors.darkSurface,
+          color: isDark ? AppColors.darkSurface : Colors.white,
           borderRadius: BorderRadius.vertical(
             top: const Radius.circular(22),
             bottom: Radius.circular(isPhone ? 0 : 22),
           ),
           border: Border.all(
-            color: AppColors.darkBorder,
+            color: isDark ? AppColors.darkBorder : AppColors.border,
           ),
+          boxShadow: isDark
+              ? null
+              : [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -253,7 +263,7 @@ class _EnrollStudentModalState
                         Text(
                           isEditing ? 'Update student details and records' : 'Generate roll number and welcome credentials',
                           style: AppTextStyles.body.copyWith(
-                            color: AppColors.darkTextMuted,
+                            color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                           ),
                         ),
                       ],
@@ -268,7 +278,7 @@ class _EnrollStudentModalState
             ),
             Divider(
               height: 1,
-              color: AppColors.darkBorder,
+              color: isDark ? AppColors.darkBorder : AppColors.border,
             ),
             Flexible(
               child: SingleChildScrollView(
@@ -325,14 +335,14 @@ class _EnrollStudentModalState
             Container(
               padding: const EdgeInsets.all(22),
               decoration: BoxDecoration(
-                color: AppColors.darkSurfaceAlt,
+                color: isDark ? AppColors.darkSurfaceAlt : AppColors.surfaceAlt,
                 borderRadius: BorderRadius.vertical(
                   top: Radius.zero,
                   bottom: Radius.circular(isPhone ? 0 : 22),
                 ),
                 border: Border(
                   top: BorderSide(
-                    color: AppColors.darkBorder,
+                    color: isDark ? AppColors.darkBorder : AppColors.border,
                   ),
                 ),
               ),
@@ -525,7 +535,8 @@ class _EnrollStudentModalState
       }
 
       final sessions = ref.read(sessionsListProvider).value ?? [];
-      final resolvedSessionId = selectedSessionId ?? (sessions.isNotEmpty ? sessions.first.id : null);
+      final currentSession = sessions.where((s) => s.isCurrent).firstOrNull;
+      final resolvedSessionId = selectedSessionId ?? (currentSession?.id ?? (sessions.isNotEmpty ? sessions.first.id : null));
       if (resolvedSessionId == null) {
         throw Exception('Please select an admission session.');
       }
@@ -534,15 +545,16 @@ class _EnrollStudentModalState
       final stages = ref.read(programStagesProvider(resolvedProgramId)).value ?? [];
       resolvedStage = selectedStage ?? (stages.isNotEmpty ? stages.first.stage : 1);
 
+      final regNo = registrationCtrl.text.trim();
       final Map<String, dynamic> data = {
         "first_name": firstCtrl.text.trim(),
         "last_name": lastCtrl.text.trim(),
-        "registration_number": registrationCtrl.text.trim(),
-        "email": emailCtrl.text.trim(),
-        "phone": phoneCtrl.text.trim(),
-        "address": addressCtrl.text.trim(),
-        "guardian_name": guardianCtrl.text.trim(),
-        "guardian_phone": guardianPhoneCtrl.text.trim(),
+        if (regNo.isNotEmpty) "registration_number": regNo,
+        if (emailCtrl.text.trim().isNotEmpty) "email": emailCtrl.text.trim(),
+        if (phoneCtrl.text.trim().isNotEmpty) "phone": phoneCtrl.text.trim(),
+        if (addressCtrl.text.trim().isNotEmpty) "address": addressCtrl.text.trim(),
+        if (guardianCtrl.text.trim().isNotEmpty) "guardian_name": guardianCtrl.text.trim(),
+        if (guardianPhoneCtrl.text.trim().isNotEmpty) "guardian_phone": guardianPhoneCtrl.text.trim(),
         "program_id": resolvedProgramId,
         "admission_session_id": resolvedSessionId,
         "current_stage": resolvedStage,
@@ -551,9 +563,6 @@ class _EnrollStudentModalState
 
       if (data["first_name"].toString().isEmpty || data["last_name"].toString().isEmpty) {
         throw Exception('First and last names are required.');
-      }
-      if (data["registration_number"].toString().isEmpty) {
-        throw Exception('Registration number is required.');
       }
 
       final dob = _parseDate(dobCtrl.text);
@@ -569,6 +578,8 @@ class _EnrollStudentModalState
 
       if (mounted) {
         ref.invalidate(studentsListProvider);
+        ref.invalidate(sessionsListProvider);
+        ref.invalidate(adminDashboardProvider);
         Navigator.pop(context, true);
       }
     } on DioException catch (e) {

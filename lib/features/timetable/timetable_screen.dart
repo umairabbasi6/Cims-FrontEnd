@@ -418,13 +418,6 @@ class _TimetableScreenState
     );
   }
 
-  List<Widget> _withSpacing(List<Widget> widgets) {
-    return widgets
-        .expand((widget) => [widget, SizedBox(width: 8)])
-        .toList()
-      ..removeLast();
-  }
-
   Widget _buildPhoneAgenda(bool isDark) {
     final screenH = MediaQuery.sizeOf(context).height;
     final agendaHeight = (screenH * 0.52).clamp(340.0, 580.0);

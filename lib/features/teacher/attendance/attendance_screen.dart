@@ -7,6 +7,7 @@ import 'package:cims/core/session/app_session.dart';
 import 'package:cims/core/utils/responsive.dart';
 import 'package:cims/core/widgets/app_scaffold.dart';
 import 'package:cims/core/widgets/badge_chip.dart';
+import 'package:cims/features/admin/subjects/models/subject_api_model.dart';
 import 'package:cims/features/admin/subjects/providers/subject_provider.dart';
 import 'package:cims/features/admin/sessions/providers/session_provider.dart';
 import 'package:cims/features/admin/enrollments/providers/enrollment_provider.dart';
@@ -28,6 +29,7 @@ class AttendanceScreen extends ConsumerStatefulWidget {
 class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
   int? _selectedSubjectId;
   int? _selectedSessionId;
+  String? _selectedClassKey;
   String selectedType = 'Theory';
   String selectedSubject = '';
   DateTime _selectedDate = DateTime.now();
@@ -69,15 +71,23 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
       firstDate: DateTime(2020),
       lastDate: DateTime(2030),
       builder: (context, child) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
         return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.dark(
-              primary: AppColors.primary,
-              onPrimary: Colors.white,
-              surface: AppColors.darkSurface,
-              onSurface: Colors.white,
-            ),
-          ),
+          data: isDark
+              ? ThemeData.dark().copyWith(
+                  colorScheme: const ColorScheme.dark(
+                    primary: AppColors.primary,
+                    surface: AppColors.darkSurface,
+                    onSurface: Colors.white,
+                  ),
+                )
+              : ThemeData.light().copyWith(
+                  colorScheme: const ColorScheme.light(
+                    primary: AppColors.primary,
+                    surface: Colors.white,
+                    onSurface: AppColors.text,
+                  ),
+                ),
           child: child!,
         );
       },
@@ -103,12 +113,39 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
     }
   }
 
-  void _markAllPresent(List<StudentAttendance> students) {
+  void _markAllStatus(List<StudentAttendance> students, AttendanceStatus status) {
     setState(() {
       for (var s in students) {
-        s.status = AttendanceStatus.present;
+        s.status = status;
       }
     });
+  }
+
+  Widget _classBulkButton({
+    required String shortLabel,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: .15),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: color.withValues(alpha: .4)),
+        ),
+        child: Text(
+          shortLabel,
+          style: TextStyle(
+            color: color,
+            fontWeight: FontWeight.w800,
+            fontSize: 12,
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _saveAttendance(List<StudentAttendance> students) async {
@@ -197,31 +234,71 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final subjectsAsync = ref.watch(subjectsListProvider);
+    final isTeacher = AppSession.currentRole.toLowerCase() == 'teacher';
+    final teacherSubsAsync = ref.watch(teacherAssignedSubjectsProvider);
+    final allSubjectsAsync = ref.watch(subjectsListProvider);
     final sessionsAsync = ref.watch(sessionsListProvider);
+    final currentSessionAsync = ref.watch(currentAcademicSessionProvider);
 
-    // enrollments require a selected subject id
+    // If teacher, display ONLY assigned subjects; if admin or if empty, show all subjects
+    final subjectsAsync = isTeacher
+        ? (teacherSubsAsync.value != null && teacherSubsAsync.value!.isNotEmpty ? teacherSubsAsync : allSubjectsAsync)
+        : allSubjectsAsync;
+
+    // enrollments require a selected subject id; pass sessionId: null so all enrolled students for this subject are returned
     final enrollmentsAsync = _selectedSubjectId != null
-      ? ref.watch(subjectEnrollmentsProvider(SubjectEnrollmentsArgs(subjectId: _selectedSubjectId!, sessionId: _selectedSessionId)))
+      ? ref.watch(subjectEnrollmentsProvider(SubjectEnrollmentsArgs(subjectId: _selectedSubjectId!, sessionId: null)))
       : const AsyncValue.data(<Map<String, dynamic>>[]);
 
     final attendanceSessionsAsync = ref.watch(attendanceSessionsListProvider(AttendanceSessionsArgs(subjectId: _selectedSubjectId, sessionId: _selectedSessionId)));
 
     // initialize default selections when providers become available
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_selectedSubjectId == null && subjectsAsync is AsyncData) {
+      if (subjectsAsync is AsyncData) {
         final subjects = subjectsAsync.value;
         if (subjects != null && subjects.isNotEmpty) {
-          setState(() {
-            _selectedSubjectId = subjects.first.id;
-            selectedSubject = subjects.first.name;
-          });
+          final Map<String, String> classMap = {};
+          for (final s in subjects) {
+            final progName = s.program?.name ?? 'Class';
+            final stageName = s.stage > 0 ? 'Semester ${s.stage}' : 'Stage ${s.stage}';
+            final key = '${s.program?.id ?? 0}_${s.stage}';
+            classMap[key] = '$progName · $stageName';
+          }
+
+          if (_selectedClassKey == null || !classMap.containsKey(_selectedClassKey)) {
+            final firstKey = classMap.keys.first;
+            final matching = subjects.where((s) => '${s.program?.id ?? 0}_${s.stage}' == firstKey).toList();
+            setState(() {
+              _selectedClassKey = firstKey;
+              if (matching.isNotEmpty) {
+                _selectedSubjectId = matching.first.id;
+                selectedSubject = matching.first.name;
+              }
+            });
+          } else if (_selectedSubjectId == null) {
+            final matching = subjects.where((s) => '${s.program?.id ?? 0}_${s.stage}' == _selectedClassKey).toList();
+            setState(() {
+              if (matching.isNotEmpty) {
+                _selectedSubjectId = matching.first.id;
+                selectedSubject = matching.first.name;
+              } else {
+                _selectedSubjectId = subjects.first.id;
+                selectedSubject = subjects.first.name;
+              }
+            });
+          }
         }
       }
-      if (_selectedSessionId == null && sessionsAsync is AsyncData) {
-        final sessions = sessionsAsync.value;
-        if (sessions != null && sessions.isNotEmpty) {
-          setState(() => _selectedSessionId = sessions.first.id);
+      if (_selectedSessionId == null) {
+        final cur = currentSessionAsync.value;
+        if (cur != null) {
+          setState(() => _selectedSessionId = cur.id);
+        } else if (sessionsAsync is AsyncData) {
+          final sessions = sessionsAsync.value;
+          if (sessions != null && sessions.isNotEmpty) {
+            final active = sessions.where((s) => s.isCurrent).firstOrNull ?? sessions.first;
+            setState(() => _selectedSessionId = active.id);
+          }
         }
       }
     });
@@ -253,7 +330,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _attendanceSection(context, students),
+          _attendanceSection(context, students, enrollmentsAsync),
           const SizedBox(height: 20),
           _recentSessionsCard(context, recentSessions),
         ],
@@ -263,34 +340,70 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
 
   List<StudentAttendance> _mapEnrollmentsToStudents(List<Map<String, dynamic>> rows) {
     return rows.map((row) {
-      final student = (row['student'] is Map) ? row['student'] as Map<String, dynamic> : row;
-      final studentId = (student['id'] ?? 0) as int;
-      final fullName = (student['full_name'] ?? student['name'] ?? student['student_name'] ?? '') as String;
-      final roll = (student['roll_no'] ?? student['roll_number'] ?? student['registration'] ?? '') as String;
+      final studentRaw = row['student'];
+      final Map<dynamic, dynamic> student = (studentRaw is Map) ? studentRaw : row;
+      final studentId = (student['id'] ?? row['student_id'] ?? 0) as int;
+      final fullName = (student['full_name'] ?? student['name'] ?? student['student_name'] ?? 'Unknown Student').toString();
+      final roll = (student['student_id_code'] ?? student['roll_no'] ?? student['roll_number'] ?? student['registration'] ?? '').toString();
       final initials = fullName.trim().isEmpty
-          ? ''
-          : fullName.trim().split(' ').map((s) => s.isEmpty ? '' : s[0]).take(2).join().toUpperCase();
+          ? 'ST'
+          : fullName.trim().split(' ').where((s) => s.isNotEmpty).map((s) => s[0]).take(2).join().toUpperCase();
       return StudentAttendance(
         id: studentId,
         initials: initials,
         name: fullName,
-        rollNo: roll,
+        rollNo: roll.isEmpty ? '-' : roll,
         status: AttendanceStatus.present,
       );
     }).toList();
   }
 
-  Widget _attendanceSection(BuildContext context, List<StudentAttendance> students) {
+  Widget _attendanceSection(
+    BuildContext context,
+    List<StudentAttendance> students,
+    AsyncValue<List<Map<String, dynamic>>> enrollmentsAsync,
+  ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final isMobile = Responsive.isMobile(context);
     final isTablet = Responsive.isTablet(context);
     final isDesktop = Responsive.isDesktop(context);
-    final subjectsAsync = ref.watch(subjectsListProvider);
+    final isTeacher = AppSession.currentRole.toLowerCase() == 'teacher';
+    final teacherSubsAsync = ref.watch(teacherAssignedSubjectsProvider);
+    final allSubjectsAsync = ref.watch(subjectsListProvider);
+    final subjectsAsync = isTeacher
+        ? (teacherSubsAsync.value != null && teacherSubsAsync.value!.isNotEmpty ? teacherSubsAsync : allSubjectsAsync)
+        : allSubjectsAsync;
+
+    final subjectsList = subjectsAsync.value ?? <SubjectApiModel>[];
+    final Map<String, String> classMap = {};
+    for (final s in subjectsList) {
+      final progName = s.program?.name ?? 'Class';
+      final stageName = s.stage > 0 ? 'Semester ${s.stage}' : 'Stage ${s.stage}';
+      final key = '${s.program?.id ?? 0}_${s.stage}';
+      classMap[key] = '$progName · $stageName';
+    }
+
+    final safeClassKey = classMap.containsKey(_selectedClassKey)
+        ? _selectedClassKey
+        : (classMap.isNotEmpty ? classMap.keys.first : null);
+
+    final filteredSubjects = safeClassKey == null
+        ? subjectsList
+        : subjectsList.where((s) => '${s.program?.id ?? 0}_${s.stage}' == safeClassKey).toList();
+
+    final safeSelectedSubjectId = filteredSubjects.any((s) => s.id == _selectedSubjectId)
+        ? _selectedSubjectId
+        : (filteredSubjects.isNotEmpty ? filteredSubjects.first.id : null);
+
+    final selectedClassLabel = (safeClassKey != null && classMap.containsKey(safeClassKey))
+        ? classMap[safeClassKey]!
+        : 'Select Class / Semester';
 
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.darkSurface,
+        color: isDark ? AppColors.darkSurface : Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.darkBorder),
+        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
       ),
       child: Column(
         children: [
@@ -309,9 +422,9 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                           Text('Mark Attendance', style: AppTextStyles.h2),
                           const SizedBox(height: 4),
                           Text(
-                            'Tap a student card to cycle Present → Absent → Late → Sick',
+                            'Select student status: Present (P), Absent (A), Late (L), or Sick (S)',
                             style: AppTextStyles.body.copyWith(
-                              color: AppColors.darkTextMuted,
+                              color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                             ),
                           ),
                         ],
@@ -320,14 +433,43 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                     if (!isMobile)
                       Row(
                         children: [
-                          OutlinedButton(
-                            onPressed: () => _markAllPresent(students),
-                            style: OutlinedButton.styleFrom(
-                              side: const BorderSide(color: AppColors.darkBorder),
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: isDark ? AppColors.darkSurfaceAlt : AppColors.surfaceAlt,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
                             ),
-                            child: const Text('Mark all present'),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'Mark Class:',
+                                  style: AppTextStyles.bodySm.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                _classBulkButton(
+                                  shortLabel: 'All Present',
+                                  color: AppColors.success,
+                                  onTap: () => _markAllStatus(students, AttendanceStatus.present),
+                                ),
+                                const SizedBox(width: 6),
+                                _classBulkButton(
+                                  shortLabel: 'All Absent',
+                                  color: AppColors.danger,
+                                  onTap: () => _markAllStatus(students, AttendanceStatus.absent),
+                                ),
+                                const SizedBox(width: 6),
+                                _classBulkButton(
+                                  shortLabel: 'All Late',
+                                  color: AppColors.warning,
+                                  onTap: () => _markAllStatus(students, AttendanceStatus.late),
+                                ),
+                              ],
+                            ),
                           ),
                           const SizedBox(width: 12),
                           ElevatedButton.icon(
@@ -357,9 +499,16 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                     children: [
                       _mobilePickerRow(
                         context,
+                        label: 'Class / Semester',
+                        value: selectedClassLabel,
+                        onTap: () => _showClassBottomSheet(context, classMap, subjectsList),
+                      ),
+                      const SizedBox(height: 8),
+                      _mobilePickerRow(
+                        context,
                         label: 'Subject',
-                        value: selectedSubject,
-                        onTap: () => _showSubjectBottomSheet(context),
+                        value: selectedSubject.isEmpty ? 'Select Subject' : selectedSubject,
+                        onTap: () => _showSubjectBottomSheet(context, filteredSubjects),
                       ),
                       const SizedBox(height: 8),
                       _mobilePickerRow(
@@ -403,73 +552,133 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: () => _markAllPresent(students),
-                              style: OutlinedButton.styleFrom(
-                                side: const BorderSide(color: AppColors.darkBorder),
-                                foregroundColor: Colors.white,
-                              ),
-                              child: const Text('Mark all present'),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: _isSaving ? null : () => _saveAttendance(students),
-                              icon: _isSaving
-                                  ? const SizedBox(
-                                      width: 14,
-                                      height: 14,
-                                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                                    )
-                                  : const Icon(Icons.save_rounded, size: 14),
-                              label: const Text('Save session'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.primary,
-                                foregroundColor: Colors.white,
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: isDark ? AppColors.darkSurfaceAlt : AppColors.surfaceAlt,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Mark Entire Class:',
+                              style: AppTextStyles.caption.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                               ),
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: _classBulkButton(
+                                    shortLabel: 'All Present',
+                                    color: AppColors.success,
+                                    onTap: () => _markAllStatus(students, AttendanceStatus.present),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: _classBulkButton(
+                                    shortLabel: 'All Absent',
+                                    color: AppColors.danger,
+                                    onTap: () => _markAllStatus(students, AttendanceStatus.absent),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: _classBulkButton(
+                                    shortLabel: 'All Late',
+                                    color: AppColors.warning,
+                                    onTap: () => _markAllStatus(students, AttendanceStatus.late),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      ElevatedButton.icon(
+                        onPressed: _isSaving ? null : () => _saveAttendance(students),
+                        icon: _isSaving
+                            ? const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              )
+                            : const Icon(Icons.save_rounded, size: 14),
+                        label: const Text('Save session'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
                       ),
                     ],
                   )
                 else
                   Row(
                     children: [
+                      // 1. CLASS / SEMESTER FILTER
                       Expanded(
                         flex: 3,
-                        child: subjectsAsync.when(
-                          loading: () => const SizedBox(height: 48, child: Center(child: CircularProgressIndicator())),
-                          error: (_, __) => const Text('Error loading subjects'),
-                          data: (subjects) {
-                            final list = subjects ?? [];
-                            return DropdownButtonFormField<int>(
-                              value: _selectedSubjectId,
-                              decoration: const InputDecoration(
-                                labelText: 'SUBJECT',
-                              ),
-                              dropdownColor: Theme.of(context).brightness == Brightness.dark ? AppColors.darkSurface : AppColors.surface,
-                              items: list.map((s) => DropdownMenuItem<int>(
-                                value: s.id,
-                                child: Text(s.name),
-                              )).toList(),
-                              onChanged: (value) {
-                                if (value == null) return;
-                                final sub = list.firstWhere((s) => s.id == value);
-                                setState(() {
-                                  _selectedSubjectId = value;
-                                  selectedSubject = sub.name;
-                                });
-                              },
-                            );
+                        child: DropdownButtonFormField<String>(
+                          value: safeClassKey,
+                          isExpanded: true,
+                          decoration: const InputDecoration(
+                            labelText: 'CLASS / SEMESTER',
+                          ),
+                          dropdownColor: isDark ? AppColors.darkSurface : AppColors.surface,
+                          items: classMap.entries.map((e) => DropdownMenuItem<String>(
+                            value: e.key,
+                            child: Text(e.value, overflow: TextOverflow.ellipsis),
+                          )).toList(),
+                          onChanged: (newClassKey) {
+                            if (newClassKey == null) return;
+                            final matchingSubs = subjectsList.where((s) => '${s.program?.id ?? 0}_${s.stage}' == newClassKey).toList();
+                            setState(() {
+                              _selectedClassKey = newClassKey;
+                              if (matchingSubs.isNotEmpty) {
+                                _selectedSubjectId = matchingSubs.first.id;
+                                selectedSubject = matchingSubs.first.name;
+                              } else {
+                                _selectedSubjectId = null;
+                                selectedSubject = '';
+                              }
+                            });
                           },
                         ),
                       ),
-                      const SizedBox(width: 16),
+                      const SizedBox(width: 14),
+                      // 2. SUBJECT FILTER
+                      Expanded(
+                        flex: 3,
+                        child: DropdownButtonFormField<int>(
+                          value: safeSelectedSubjectId,
+                          isExpanded: true,
+                          decoration: const InputDecoration(
+                            labelText: 'SUBJECT',
+                          ),
+                          dropdownColor: isDark ? AppColors.darkSurface : AppColors.surface,
+                          items: filteredSubjects.map((s) => DropdownMenuItem<int>(
+                            value: s.id,
+                            child: Text(s.name, overflow: TextOverflow.ellipsis),
+                          )).toList(),
+                          onChanged: (value) {
+                            if (value == null) return;
+                            final sub = filteredSubjects.firstWhere((s) => s.id == value);
+                            setState(() {
+                              _selectedSubjectId = value;
+                              selectedSubject = sub.name;
+                            });
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      // 3. DATE
                       Expanded(
                         flex: 2,
                         child: GestureDetector(
@@ -485,15 +694,16 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 16),
+                      const SizedBox(width: 14),
+                      // 4. TYPE
                       Expanded(
                         flex: 2,
                         child: DropdownButtonFormField<String>(
-                          initialValue: selectedType,
+                          value: selectedType,
                           decoration: const InputDecoration(
                             labelText: 'TYPE',
                           ),
-                          dropdownColor: Theme.of(context).brightness == Brightness.dark ? AppColors.darkSurface : AppColors.surface,
+                          dropdownColor: isDark ? AppColors.darkSurface : AppColors.surface,
                           items: const [
                             DropdownMenuItem(
                               value: 'Theory',
@@ -510,11 +720,14 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                           },
                         ),
                       ),
-                      const SizedBox(width: 16),
+                      const SizedBox(width: 14),
                       OutlinedButton.icon(
                         onPressed: () {},
                         icon: const Icon(Icons.upload_file_rounded),
                         label: const Text('Import CSV'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        ),
                       ),
                     ],
                   ),
@@ -544,7 +757,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                     Text(
                       '${((_countFromList(students, AttendanceStatus.present) / (students.isEmpty ? 1 : students.length)) * 100).round()}% present',
                       style: AppTextStyles.bodySm.copyWith(
-                        color: AppColors.darkTextMuted,
+                        color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                       ),
                     ),
                   ],
@@ -553,8 +766,25 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
               ],
             ),
           ),
-          Divider(height: 1, color: AppColors.darkBorder),
-          if (isMobile)
+          Divider(height: 1, color: isDark ? AppColors.darkBorder : AppColors.border),
+          if (enrollmentsAsync.isLoading)
+            const Padding(
+              padding: EdgeInsets.all(40),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (students.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(40),
+              child: Center(
+                child: Text(
+                  'No students enrolled in this subject.',
+                  style: AppTextStyles.body.copyWith(
+                    color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                  ),
+                ),
+              ),
+            )
+          else if (isMobile)
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 22),
               child: ListView.separated(
@@ -575,10 +805,10 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: students.length,
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: isDesktop ? 4 : 2,
+                  crossAxisCount: isDesktop ? 3 : (isTablet ? 2 : 1),
                   crossAxisSpacing: 14,
                   mainAxisSpacing: 14,
-                  childAspectRatio: isTablet ? 1.25 : 1.0,
+                  childAspectRatio: isDesktop ? 2.5 : 2.1,
                 ),
                 itemBuilder: (context, index) {
                   return _studentCard(students[index]);
@@ -600,8 +830,9 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
     required String value,
     required VoidCallback onTap,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Material(
-      color: AppColors.darkSurfaceAlt,
+      color: isDark ? AppColors.darkSurfaceAlt : AppColors.surfaceAlt,
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         onTap: onTap,
@@ -620,7 +851,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                     Text(
                       label.toUpperCase(),
                       style: AppTextStyles.labelSm.copyWith(
-                        color: AppColors.darkTextMuted,
+                        color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -644,13 +875,14 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
   }
 
   Widget _recentSessionsCard(BuildContext context, List<RecentAttendance> recentSessions) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final isMobile = Responsive.isMobile(context);
 
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.darkSurface,
+        color: isDark ? AppColors.darkSurface : Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.darkBorder),
+        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
       ),
       child: Column(
         children: [
@@ -664,21 +896,21 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                 Text(
                   'Last 5 attendance records',
                   style: AppTextStyles.body.copyWith(
-                    color: AppColors.darkTextMuted,
+                    color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                   ),
                 ),
               ],
             ),
           ),
-          Divider(height: 1, color: AppColors.darkBorder),
+          Divider(height: 1, color: isDark ? AppColors.darkBorder : AppColors.border),
           if (isMobile)
-            ...recentSessions.map(_sessionMobileCard)
+            ...recentSessions.map((e) => _sessionMobileCard(context, e))
           else ...[
             Container(
               height: 48,
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: const BoxDecoration(
-                color: AppColors.darkSurfaceAlt,
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.darkSurfaceAlt : AppColors.surfaceAlt,
               ),
               child: Row(
                 children: [
@@ -691,19 +923,20 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                 ],
               ),
             ),
-            ...recentSessions.map(_sessionRow),
+            ...recentSessions.map((e) => _sessionRow(context, e)),
           ],
         ],
       ),
     );
   }
 
-  Widget _sessionMobileCard(RecentAttendance entry) {
+  Widget _sessionMobileCard(BuildContext context, RecentAttendance entry) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        border: Border(top: BorderSide(color: AppColors.darkBorder)),
+        border: Border(top: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.border)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -731,7 +964,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
           Text(
             '${entry.className} · ${entry.type} · ${entry.present}',
             style: AppTextStyles.caption.copyWith(
-              color: AppColors.darkTextMuted,
+              color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
             ),
           ),
         ],
@@ -739,11 +972,12 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
     );
   }
 
-  Widget _sessionRow(RecentAttendance entry) {
+  Widget _sessionRow(BuildContext context, RecentAttendance entry) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       decoration: BoxDecoration(
-        border: Border(top: BorderSide(color: AppColors.darkBorder)),
+        border: Border(top: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.border)),
       ),
       child: Row(
         children: [
@@ -787,6 +1021,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
   }
 
   Widget _studentAttendanceMobileTile(StudentAttendance student) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final colors = _statusColors(student.status);
 
     return GestureDetector(
@@ -808,7 +1043,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
         },
         background: Container(
           decoration: BoxDecoration(
-            color: AppColors.successSoft,
+            color: isDark ? AppColors.success.withValues(alpha: 0.2) : AppColors.successSoft,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: AppColors.success, width: 1.4),
           ),
@@ -822,7 +1057,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
         ),
         secondaryBackground: Container(
           decoration: BoxDecoration(
-            color: AppColors.dangerSoft,
+            color: isDark ? AppColors.danger.withValues(alpha: 0.2) : AppColors.dangerSoft,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: AppColors.danger, width: 1.4),
           ),
@@ -947,6 +1182,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
     required Color color,
     required VoidCallback onTap,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
@@ -957,7 +1193,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
           children: [
             Icon(
               icon,
-              color: selected ? color : AppColors.darkTextMuted,
+              color: selected ? color : (isDark ? AppColors.darkTextMuted : AppColors.textMuted),
               size: 22,
             ),
             const SizedBox(height: 2),
@@ -966,7 +1202,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
               style: AppTextStyles.caption.copyWith(
                 fontSize: 10,
                 fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                color: selected ? color : AppColors.darkTextMuted,
+                color: selected ? color : (isDark ? AppColors.darkTextMuted : AppColors.textMuted),
               ),
             ),
           ],
@@ -976,97 +1212,191 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
   }
 
   Widget _studentCard(StudentAttendance student) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final colors = _statusColors(student.status);
 
-    return InkWell(
-      borderRadius: BorderRadius.circular(16),
-      onTap: () {
-        setState(() {
-          student.status = switch (student.status) {
-            AttendanceStatus.present => AttendanceStatus.absent,
-            AttendanceStatus.absent => AttendanceStatus.late,
-            AttendanceStatus.late => AttendanceStatus.sick,
-            AttendanceStatus.sick => AttendanceStatus.present,
-          };
-        });
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: colors.background.withValues(alpha: .18),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: colors.foreground,
-            width: 1.4,
-          ),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkSurface : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: colors.foreground.withValues(alpha: 0.35),
+          width: 1.5,
         ),
-        child: Row(
-          children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                gradient: AppColors.gradientPrimary,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                student.initials,
-                style: AppTextStyles.caption.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
+        boxShadow: [
+          BoxShadow(
+            color: colors.foreground.withValues(alpha: 0.06),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          // Top Row: Avatar + Name & Roll + Current Status Badge
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  gradient: AppColors.gradientPrimary,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  student.initials,
+                  style: AppTextStyles.caption.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 12,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    student.name,
-                    style: AppTextStyles.body.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: colors.foreground,
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      student.name,
+                      style: AppTextStyles.bodySm.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: isDark ? AppColors.darkText : AppColors.text,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    student.rollNo,
-                    style: AppTextStyles.caption.copyWith(
-                      color: colors.foreground.withValues(alpha: .75),
+                    const SizedBox(height: 2),
+                    Text(
+                      student.rollNo,
+                      style: AppTextStyles.caption.copyWith(
+                        color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                        fontSize: 11,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: colors.foreground.withValues(alpha: .15),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  _statusToCode(student.status),
+                  style: TextStyle(
+                    color: colors.foreground,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 11,
                   ),
-                ],
+                ),
               ),
-            ),
-            Container(
-              width: 22,
-              height: 22,
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
+            ],
+          ),
+
+          // Bottom Row: Direct Option Buttons: [ P ] [ A ] [ L ] [ S ]
+          Row(
+            children: [
+              _statusChipButton(
+                code: 'P',
+                label: 'Present',
+                status: AttendanceStatus.present,
+                currentStatus: student.status,
+                color: AppColors.success,
+                onTap: () => setState(() => student.status = AttendanceStatus.present),
               ),
+              const SizedBox(width: 6),
+              _statusChipButton(
+                code: 'A',
+                label: 'Absent',
+                status: AttendanceStatus.absent,
+                currentStatus: student.status,
+                color: AppColors.danger,
+                onTap: () => setState(() => student.status = AttendanceStatus.absent),
+              ),
+              const SizedBox(width: 6),
+              _statusChipButton(
+                code: 'L',
+                label: 'Late',
+                status: AttendanceStatus.late,
+                currentStatus: student.status,
+                color: AppColors.warning,
+                onTap: () => setState(() => student.status = AttendanceStatus.late),
+              ),
+              const SizedBox(width: 6),
+              _statusChipButton(
+                code: 'S',
+                label: 'Sick',
+                status: AttendanceStatus.sick,
+                currentStatus: student.status,
+                color: AppColors.purple,
+                onTap: () => setState(() => student.status = AttendanceStatus.sick),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _statusChipButton({
+    required String code,
+    required String label,
+    required AttendanceStatus status,
+    required AttendanceStatus currentStatus,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    final isSelected = currentStatus == status;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          height: 30,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: isSelected ? color : (isDark ? AppColors.darkSurfaceAlt : AppColors.surfaceAlt),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: isSelected ? color : (isDark ? AppColors.darkBorder : AppColors.border),
+              width: isSelected ? 1.5 : 1.0,
             ),
-          ],
+          ),
+          child: Text(
+            code,
+            style: TextStyle(
+              color: isSelected ? Colors.white : (isDark ? AppColors.darkTextMuted : AppColors.textMuted),
+              fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600,
+              fontSize: 12,
+            ),
+          ),
         ),
       ),
     );
   }
 
-  Future<void> _showSubjectBottomSheet(BuildContext context) async {
+  Future<void> _showClassBottomSheet(BuildContext context, Map<String, String> classMap, List<SubjectApiModel> subjects) async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.darkSurface,
+      backgroundColor: isDark ? AppColors.darkSurface : Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (sheetContext) {
-        final subjectsAsync = ref.read(subjectsListProvider);
-        final subjects = subjectsAsync.maybeWhen(data: (v) => v, orElse: () => <dynamic>[]);
         return SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(20),
@@ -1074,17 +1404,30 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Subject', style: AppTextStyles.h3),
+                Text('Class / Semester', style: AppTextStyles.h3),
                 const SizedBox(height: 12),
-                ...subjects.map((s) {
-                  final name = (s is Map) ? (s['name'] ?? '') : (s.name ?? '');
-                  final id = (s is Map) ? (s['id'] ?? 0) : s.id;
+                ...classMap.entries.map((entry) {
+                  final isSelected = entry.key == _selectedClassKey;
                   return ListTile(
-                    title: Text(name.toString()),
+                    title: Text(
+                      entry.value,
+                      style: TextStyle(
+                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
+                        color: isSelected ? AppColors.primary : (isDark ? AppColors.darkText : AppColors.text),
+                      ),
+                    ),
+                    trailing: isSelected ? const Icon(Icons.check, color: AppColors.primary) : null,
                     onTap: () {
+                      final matchingSubs = subjects.where((s) => '${s.program?.id ?? 0}_${s.stage}' == entry.key).toList();
                       setState(() {
-                        selectedSubject = name.toString();
-                        _selectedSubjectId = id is int ? id : int.tryParse(id.toString());
+                        _selectedClassKey = entry.key;
+                        if (matchingSubs.isNotEmpty) {
+                          _selectedSubjectId = matchingSubs.first.id;
+                          selectedSubject = matchingSubs.first.name;
+                        } else {
+                          _selectedSubjectId = null;
+                          selectedSubject = '';
+                        }
                       });
                       Navigator.of(sheetContext).pop();
                     },
@@ -1098,11 +1441,68 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
     );
   }
 
-  Future<void> _showTypeBottomSheet(BuildContext context) async {
+  Future<void> _showSubjectBottomSheet(BuildContext context, List<SubjectApiModel> subjects) async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.darkSurface,
+      backgroundColor: isDark ? AppColors.darkSurface : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Subject', style: AppTextStyles.h3),
+                const SizedBox(height: 12),
+                if (subjects.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Text(
+                      'No subjects found for this class',
+                      style: TextStyle(color: isDark ? AppColors.darkTextMuted : AppColors.textMuted),
+                    ),
+                  )
+                else
+                  ...subjects.map((s) {
+                    final isSelected = s.id == _selectedSubjectId;
+                    return ListTile(
+                      title: Text(
+                        s.name,
+                        style: TextStyle(
+                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
+                          color: isSelected ? AppColors.primary : (isDark ? AppColors.darkText : AppColors.text),
+                        ),
+                      ),
+                      trailing: isSelected ? const Icon(Icons.check, color: AppColors.primary) : null,
+                      onTap: () {
+                        setState(() {
+                          selectedSubject = s.name;
+                          _selectedSubjectId = s.id;
+                        });
+                        Navigator.of(sheetContext).pop();
+                      },
+                    );
+                  }).toList(),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _showTypeBottomSheet(BuildContext context) async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: isDark ? AppColors.darkSurface : Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -1137,53 +1537,6 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
       },
     );
   }
-
-  Future<void> _showDateBottomSheet(BuildContext context) async {
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: AppColors.darkSurface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (sheetContext) {
-        return SafeArea(
-          child: Padding(
-            padding: EdgeInsets.only(
-              left: 20,
-              right: 20,
-              top: 20,
-              bottom: 20 + MediaQuery.viewInsetsOf(sheetContext).bottom,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Session date', style: AppTextStyles.h3),
-                const SizedBox(height: 12),
-                TextField(
-                  decoration: const InputDecoration(
-                    hintText: 'DD/MM/YYYY',
-                    suffixIcon: Icon(Icons.calendar_today_rounded),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.of(sheetContext).pop(),
-                    child: const Text('Done'),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  
 
   ({Color foreground, Color background}) _statusColors(
     AttendanceStatus status,

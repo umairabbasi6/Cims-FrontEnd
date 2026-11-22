@@ -9,7 +9,6 @@ import 'package:cims/features/admin/students/providers/student_provider.dart';
 import 'package:cims/features/admin/students/models/student_api_model.dart';
 import 'package:cims/features/admin/sessions/providers/session_provider.dart';
 import 'package:cims/features/admin/programs/providers/program_provider.dart';
-import 'package:cims/features/admin/programs/models/program_model.dart';
 
 class RecordFeeModal extends ConsumerStatefulWidget {
   const RecordFeeModal({
@@ -51,19 +50,6 @@ class _RecordFeeModalState extends ConsumerState<RecordFeeModal> {
       initialDate: _dueDate ?? DateTime.now(),
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
-      builder: (context, child) {
-        return Theme(
-          data: ThemeData.dark().copyWith(
-            colorScheme: const ColorScheme.dark(
-              primary: AppColors.primary,
-              onPrimary: Colors.white,
-              surface: AppColors.darkSurface,
-              onSurface: Colors.white,
-            ),
-          ),
-          child: child!,
-        );
-      },
     );
     if (picked != null) {
       setState(() => _dueDate = picked);
@@ -132,6 +118,7 @@ class _RecordFeeModalState extends ConsumerState<RecordFeeModal> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final studentsAsync = ref.watch(studentsListProvider);
     final sessionsAsync = ref.watch(sessionsListProvider);
     final programsAsync = ref.watch(programsProvider);
@@ -141,9 +128,18 @@ class _RecordFeeModalState extends ConsumerState<RecordFeeModal> {
       child: Container(
         width: 560,
         decoration: BoxDecoration(
-          color: AppColors.darkSurface,
+          color: isDark ? AppColors.darkSurface : Colors.white,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: AppColors.darkBorder),
+          border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
+          boxShadow: isDark
+              ? null
+              : [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 16,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -157,11 +153,19 @@ class _RecordFeeModalState extends ConsumerState<RecordFeeModal> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('CrAssign Fee', style: AppTextStyles.h2),
+                        Text(
+                          'Assign Fee',
+                          style: AppTextStyles.h2.copyWith(
+                            color: isDark ? Colors.white : AppColors.text,
+                          ),
+                        ),
                         const SizedBox(height: 4),
-                        Text('Fill the details below',
-                            style: AppTextStyles.body.copyWith(
-                                color: AppColors.darkTextMuted)),
+                        Text(
+                          'Fill the details below',
+                          style: AppTextStyles.body.copyWith(
+                            color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -173,16 +177,16 @@ class _RecordFeeModalState extends ConsumerState<RecordFeeModal> {
                       height: 42,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: AppColors.darkBorder),
+                        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
                       ),
                       child: Icon(Icons.close_rounded,
-                          color: AppColors.darkTextMuted),
+                          color: isDark ? AppColors.darkTextMuted : AppColors.textMuted),
                     ),
                   ),
                 ],
               ),
             ),
-            Divider(height: 1, color: AppColors.darkBorder),
+            Divider(height: 1, color: isDark ? AppColors.darkBorder : AppColors.border),
             Padding(
               padding: const EdgeInsets.all(24),
               child: Column(
@@ -190,13 +194,17 @@ class _RecordFeeModalState extends ConsumerState<RecordFeeModal> {
                 children: [
                   Text('STUDENT',
                       style: AppTextStyles.label.copyWith(
-                          color: AppColors.darkTextMuted, letterSpacing: 1.0)),
+                          color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary, letterSpacing: 1.0)),
                   const SizedBox(height: 8),
                   studentsAsync.when(
                     data: (students) {
                       return Autocomplete<StudentApiModel>(
-                        displayStringForOption: (s) =>
-                            "${s.fullName} - ${s.studentIdCode ?? s.registrationNumber ?? ''}",
+                        displayStringForOption: (s) {
+                          final code = s.studentIdCode.isNotEmpty
+                              ? s.studentIdCode
+                              : s.registrationNumber;
+                          return "${s.fullName} - $code";
+                        },
                         optionsBuilder: (textEditingValue) {
                           if (textEditingValue.text.isEmpty) {
                             return const Iterable<StudentApiModel>.empty();
@@ -205,11 +213,10 @@ class _RecordFeeModalState extends ConsumerState<RecordFeeModal> {
                           return students.where((s) {
                             final nameMatch =
                                 s.fullName.toLowerCase().contains(query);
-                            final codeMatch = (s.studentIdCode ??
-                                    s.registrationNumber ??
-                                    '')
-                                .toLowerCase()
-                                .contains(query);
+                            final code = s.studentIdCode.isNotEmpty
+                                ? s.studentIdCode
+                                : s.registrationNumber;
+                            final codeMatch = code.toLowerCase().contains(query);
                             return nameMatch || codeMatch;
                           });
                         },
@@ -235,7 +242,7 @@ class _RecordFeeModalState extends ConsumerState<RecordFeeModal> {
                   const SizedBox(height: 20),
                   Text('PROGRAM (OPTIONAL)',
                       style: AppTextStyles.label.copyWith(
-                          color: AppColors.darkTextMuted, letterSpacing: 1.0)),
+                          color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary, letterSpacing: 1.0)),
                   const SizedBox(height: 8),
                   programsAsync.when(
                     data: (programs) {
@@ -271,7 +278,7 @@ class _RecordFeeModalState extends ConsumerState<RecordFeeModal> {
                           children: [
                             Text('FEE TYPE',
                                 style: AppTextStyles.label.copyWith(
-                                    color: AppColors.darkTextMuted,
+                                    color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
                                     letterSpacing: 1.0)),
                             const SizedBox(height: 8),
                             DropdownButtonFormField<String>(
@@ -294,7 +301,7 @@ class _RecordFeeModalState extends ConsumerState<RecordFeeModal> {
                           children: [
                             Text('AMOUNT (PKR)',
                                 style: AppTextStyles.label.copyWith(
-                                    color: AppColors.darkTextMuted,
+                                    color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
                                     letterSpacing: 1.0)),
                             const SizedBox(height: 8),
                             TextField(
@@ -318,7 +325,7 @@ class _RecordFeeModalState extends ConsumerState<RecordFeeModal> {
                           children: [
                             Text('DUE DATE',
                                 style: AppTextStyles.label.copyWith(
-                                    color: AppColors.darkTextMuted,
+                                    color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
                                     letterSpacing: 1.0)),
                             const SizedBox(height: 8),
                             InkWell(
@@ -335,8 +342,8 @@ class _RecordFeeModalState extends ConsumerState<RecordFeeModal> {
                                       : 'mm/dd/yyyy',
                                   style: TextStyle(
                                     color: _dueDate != null
-                                        ? Colors.white
-                                        : AppColors.darkTextMuted,
+                                        ? (isDark ? Colors.white : AppColors.text)
+                                        : (isDark ? AppColors.darkTextMuted : AppColors.textMuted),
                                   ),
                                 ),
                               ),
@@ -351,7 +358,7 @@ class _RecordFeeModalState extends ConsumerState<RecordFeeModal> {
                           children: [
                             Text('TERM',
                                 style: AppTextStyles.label.copyWith(
-                                    color: AppColors.darkTextMuted,
+                                    color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
                                     letterSpacing: 1.0)),
                             const SizedBox(height: 8),
                             sessionsAsync.when(
@@ -383,7 +390,7 @@ class _RecordFeeModalState extends ConsumerState<RecordFeeModal> {
                 ],
               ),
             ),
-            Divider(height: 1, color: AppColors.darkBorder),
+            Divider(height: 1, color: isDark ? AppColors.darkBorder : AppColors.border),
             Padding(
               padding: const EdgeInsets.all(24),
               child: Row(

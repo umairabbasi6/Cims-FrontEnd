@@ -4,10 +4,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cims/features/auth/providers/auth_provider.dart';
 import 'package:cims/features/admin/students/providers/student_provider.dart';
 import 'package:cims/features/admin/staff/providers/staff_provider.dart';
+import 'package:cims/features/admin/fees/providers/fees_api_provider.dart';
+import 'package:cims/features/admin/sessions/providers/session_provider.dart';
 import 'package:cims/core/constants/app_colors.dart';
 import 'package:cims/core/constants/app_constants.dart';
 import 'package:cims/core/constants/role_profile.dart';
 import 'package:cims/core/constants/app_text_styles.dart';
+import 'package:cims/core/widgets/badge_chip.dart';
 
 class AppSidebar extends ConsumerWidget {
   final String currentRoute;
@@ -30,7 +33,7 @@ class AppSidebar extends ConsumerWidget {
 
     final bg = isDark ? AppColors.darkSidebarBg : AppColors.sidebarBg;
     final border = isDark ? AppColors.darkBorder : AppColors.border;
-    final items = _navItemsForRole(role);
+    final items = _navItemsForRole(role, ref);
 
     // Build profile: use real student/teacher data if available
     final RoleProfile profile;
@@ -309,8 +312,15 @@ class AppSidebar extends ConsumerWidget {
     );
   }
 
-  List<_NavSection> _navItemsForRole(String role) {
+  List<_NavSection> _navItemsForRole(String role, WidgetRef ref) {
     if (role == 'admin') {
+      String? feesBadge;
+      final feeDash = ref.watch(feesDashboardProvider).value;
+      final defaulters = feeDash?['defaulters_total'] as int? ?? 0;
+      if (defaulters > 0) {
+        feesBadge = defaulters.toString();
+      }
+
       return [
         _NavSection('Overview', [
           _NavItem(Icons.dashboard_rounded, 'Dashboard', '/dashboard'),
@@ -319,8 +329,9 @@ class AppSidebar extends ConsumerWidget {
         _NavSection('Academics', [
           _NavItem(Icons.account_balance_rounded, 'Departments', '/departments'),
           _NavItem(Icons.school_rounded, 'Programs', '/programs'),
-          _NavItem(Icons.event_rounded, 'Sessions', '/sessions', badge: 'New'),
+          _NavItem(Icons.event_rounded, 'Sessions', '/sessions'),
           _NavItem(Icons.book_rounded, 'Subjects', '/subjects'),
+          _NavItem(Icons.how_to_reg_rounded, 'Enrollments', '/enrollments'),
           _NavItem(Icons.calendar_month_rounded, 'Timetable', '/timetable'),
         ]),
         _NavSection('People', [
@@ -331,7 +342,7 @@ class AppSidebar extends ConsumerWidget {
         _NavSection('Operations', [
           _NavItem(Icons.check_box_outlined, 'Attendance', '/attendance'),
           _NavItem(Icons.assignment_outlined, 'Results', '/results'),
-          _NavItem(Icons.account_balance_wallet_rounded, 'Fees', '/fees', badge: '14'),
+          _NavItem(Icons.account_balance_wallet_rounded, 'Fees', '/fees', badge: feesBadge),
         ]),
         _NavSection('System', [
           _NavItem(Icons.settings_rounded, 'Settings', '/settings'),
@@ -350,7 +361,7 @@ class AppSidebar extends ConsumerWidget {
           _NavItem(Icons.calendar_month_rounded, 'Timetable', '/timetable'),
         ]),
         _NavSection('Daily', [
-          _NavItem(Icons.check_box_outlined, 'Attendance', '/attendance', badge: '!'),
+          _NavItem(Icons.check_box_outlined, 'Attendance', '/attendance'),
           _NavItem(Icons.assignment_outlined, 'Marks Entry', '/results'),
         ]),
         _NavSection('Roster', [
@@ -360,6 +371,18 @@ class AppSidebar extends ConsumerWidget {
           _NavItem(Icons.person_outline_rounded, 'Profile', '/settings'),
         ]),
       ];
+    }
+
+    String? studentFeesBadge;
+    final student = ref.watch(currentStudentProvider).value;
+    final session = ref.watch(currentAcademicSessionProvider).value;
+    if (student != null && session != null) {
+      final dues = ref.watch(studentFeeDashboardProvider(
+        StudentFeeDashboardParam(studentId: student.id, sessionId: session.id),
+      )).value;
+      if (dues != null && (dues['balance'] as num? ?? 0) > 0) {
+        studentFeesBadge = 'Due';
+      }
     }
 
     return [
@@ -374,7 +397,7 @@ class AppSidebar extends ConsumerWidget {
       _NavSection('Records', [
         _NavItem(Icons.check_box_outlined, 'Attendance', '/attendance'),
         _NavItem(Icons.assignment_outlined, 'Results', '/results'),
-        _NavItem(Icons.account_balance_wallet_outlined, 'Fee Status', '/fees', badge: 'Due'),
+        _NavItem(Icons.account_balance_wallet_outlined, 'Fee Status', '/fees', badge: studentFeesBadge),
       ]),
       _NavSection('Account', [
         _NavItem(Icons.person_outline_rounded, 'Profile', '/settings'),
@@ -519,7 +542,7 @@ class _SidebarItemState extends State<_SidebarItem> {
                         fontSize: 10,
                         fontWeight: FontWeight.w800,
                         color: (widget.badge == 'Due' || widget.badge == '!' || widget.badge == '3' || widget.badge == '14')
-                            ? const Color(0xFF783C00)
+                            ? AppColors.warningDark
                             : Colors.white,
                       ),
                     ),
@@ -559,27 +582,10 @@ class _RoleBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.darkSurfaceAlt : AppColors.surfaceAlt,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: AppColors.primary.withValues(alpha: 0.25),
-        ),
-      ),
-      child: Text(
-        _label,
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w800,
-          letterSpacing: 0.3,
-          color: AppColors.primary,
-        ),
+    return Center(
+      child: BadgeChip(
+        label: _label.toUpperCase(),
+        tone: BadgeTone.primary,
       ),
     );
   }

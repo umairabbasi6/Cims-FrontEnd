@@ -131,13 +131,8 @@ class _AddDepartmentModalState
   }
 
   @override
-    Widget build(BuildContext context) {
-      final screenWidth = MediaQuery.of(context).size.width;
-      final bool isMobile = screenWidth < 600;
-      final bool isTablet = screenWidth >= 600 && screenWidth < 1024;
-      final bool isDesktop = screenWidth >= 1024;
-
-      final isDark = Theme.of(context).brightness == Brightness.dark;
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
       return Dialog(
         backgroundColor: Colors.transparent,

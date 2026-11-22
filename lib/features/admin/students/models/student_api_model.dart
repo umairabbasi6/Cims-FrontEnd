@@ -132,9 +132,9 @@ class StudentApiModel {
       currentStage: json['current_stage'] as int? ?? 0,
       status: json['status'] as String? ?? 'active',
       isActive: json['is_active'] as bool? ?? true,
-      createdAt: DateTime.parse(
-        json['created_at'] as String,
-      ),
+      createdAt: json['created_at'] != null
+          ? (DateTime.tryParse(json['created_at'].toString()) ?? DateTime.now())
+          : DateTime.now(),
       updatedAt: json['updated_at'] != null ? DateTime.tryParse(json['updated_at'] as String) : null,
       graduationDate: json['graduation_date'] as String?,
       program: json['program'] != null

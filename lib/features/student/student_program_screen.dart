@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:cims/core/constants/app_colors.dart';
+import 'package:cims/core/constants/app_constants.dart';
 import 'package:cims/core/constants/app_text_styles.dart';
+import 'package:cims/core/utils/responsive.dart';
 import 'package:cims/core/widgets/app_scaffold.dart';
 import 'package:cims/core/widgets/badge_chip.dart';
+import 'package:cims/core/widgets/stat_card.dart';
 import 'package:cims/features/student/providers/student_program_provider.dart';
 
 class StudentProgramScreen extends ConsumerWidget {
@@ -17,9 +20,6 @@ class StudentProgramScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final bool isMobile = screenWidth < 600;
-
     final overviewAsync = ref.watch(studentProgramOverviewProvider);
 
     return AppScaffold(
@@ -67,37 +67,40 @@ class _MetricsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final bool isMobile = screenWidth < 600;
+    final bool isMobile = Responsive.isMobile(context);
 
     final cards = [
-      _MetricCard(
+      StatCard(
         label: 'Program',
         value: overview.programCode,
-        pill: overview.programTitle,
+        trend: overview.programTitle,
+        trendUp: true,
         icon: Icons.school_outlined,
-        tone: BadgeTone.primary,
+        tone: StatTone.primary,
       ),
-      _MetricCard(
+      StatCard(
         label: 'Semester',
         value: overview.semesterValue,
-        pill: overview.sessionLabel,
+        trend: overview.sessionLabel,
+        trendUp: true,
         icon: Icons.calendar_month_outlined,
-        tone: BadgeTone.accent,
+        tone: StatTone.accent,
       ),
-      _MetricCard(
+      StatCard(
         label: 'Advisor',
         value: '—',
-        pill: 'Faculty mentor',
+        trend: 'Faculty mentor',
+        trendUp: true,
         icon: Icons.person_outline_rounded,
-        tone: BadgeTone.success,
+        tone: StatTone.success,
       ),
-      _MetricCard(
+      StatCard(
         label: 'Credits',
         value: overview.creditsValue,
-        pill: overview.creditsPill,
+        trend: overview.creditsPill,
+        trendUp: true,
         icon: Icons.menu_book_outlined,
-        tone: BadgeTone.warning,
+        tone: StatTone.warning,
       ),
     ];
 
@@ -134,8 +137,7 @@ class _ProgramStructureCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final bool isMobile = screenWidth < 600;
+    final bool isMobile = Responsive.isMobile(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bg = isDark ? AppColors.darkSurface : AppColors.surface;
     final border = isDark ? AppColors.darkBorder : AppColors.border;
@@ -144,7 +146,7 @@ class _ProgramStructureCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(AppConstants.radiusLg),
         border: Border.all(color: border),
       ),
       child: Column(
@@ -225,7 +227,7 @@ class _StructureRow extends StatelessWidget {
           Expanded(flex: 36, child: Text(row.subjectsLabel)),
           Expanded(flex: 14, child: Text(row.creditHours)),
           Expanded(flex: 10, child: Text(row.gpa)),
-          Expanded(flex: 14, child: _StatusChip(status: row.status)),
+          Expanded(flex: 14, child: BadgeChip.status(row.status)),
         ],
       ),
     );
@@ -240,6 +242,7 @@ class _StructureMobileCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(border: Border(top: BorderSide(color: border))),
@@ -250,7 +253,7 @@ class _StructureMobileCard extends StatelessWidget {
             children: [
               Text(row.semesterLabel, style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w800)),
               const Spacer(),
-              _StatusChip(status: row.status),
+              BadgeChip.status(row.status),
             ],
           ),
           SizedBox(height: 8),
@@ -258,96 +261,10 @@ class _StructureMobileCard extends StatelessWidget {
           SizedBox(height: 8),
           Text(
             'Credits: ${row.creditHours} · GPA: ${row.gpa}',
-            style: AppTextStyles.bodySm.copyWith(color: AppColors.darkTextMuted),
+            style: AppTextStyles.bodySm.copyWith(
+              color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+            ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StatusChip extends StatelessWidget {
-  final String status;
-
-  const _StatusChip({required this.status});
-
-  @override
-  Widget build(BuildContext context) {
-    final tone = switch (status) {
-      'Passed' => BadgeTone.success,
-      'Active' => BadgeTone.primary,
-      _ => BadgeTone.muted,
-    };
-
-    return BadgeChip(label: status, tone: tone);
-  }
-}
-
-class _MetricCard extends StatelessWidget {
-  final String label;
-  final String value;
-  final String pill;
-  final IconData icon;
-  final BadgeTone tone;
-
-  const _MetricCard({
-    required this.label,
-    required this.value,
-    required this.pill,
-    required this.icon,
-    required this.tone,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final color = switch (tone) {
-      BadgeTone.primary => AppColors.primary,
-      BadgeTone.accent => AppColors.accent,
-      BadgeTone.success => AppColors.success,
-      _ => AppColors.warning,
-    };
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.darkSurface : AppColors.surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  label,
-                  style: AppTextStyles.bodySm.copyWith(
-                    color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
-                  ),
-                ),
-              ),
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: color, size: 22),
-              ),
-            ],
-          ),
-          SizedBox(height: 8),
-          Text(
-            value,
-            style: AppTextStyles.h1.copyWith(fontSize: 24),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          SizedBox(height: 16),
-          BadgeChip(label: pill, tone: tone),
         ],
       ),
     );
@@ -369,19 +286,25 @@ class _MessageCard extends StatelessWidget {
       padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkSurface : AppColors.surface,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(AppConstants.radiusLg),
         border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
       ),
       child: Column(
         children: [
-          Icon(Icons.school_outlined, size: 48, color: AppColors.textMuted),
+          Icon(
+            Icons.school_outlined,
+            size: 48,
+            color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+          ),
           SizedBox(height: 12),
           Text(title, style: AppTextStyles.h3),
           SizedBox(height: 8),
           Text(
             message,
             textAlign: TextAlign.center,
-            style: AppTextStyles.body.copyWith(color: AppColors.textMuted),
+            style: AppTextStyles.body.copyWith(
+              color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+            ),
           ),
         ],
       ),

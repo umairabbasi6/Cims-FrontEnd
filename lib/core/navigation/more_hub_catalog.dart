@@ -49,6 +49,11 @@ const kMoreHubCatalog = <MoreHubEntry>[
     route: '/subjects',
   ),
   MoreHubEntry(
+    label: 'Enrollments',
+    icon: Icons.how_to_reg_outlined,
+    route: '/enrollments',
+  ),
+  MoreHubEntry(
     label: 'Timetable',
     icon: Icons.calendar_month_outlined,
     route: '/timetable',

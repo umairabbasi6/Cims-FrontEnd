@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:cims/core/constants/app_colors.dart';
+import 'package:cims/core/constants/app_constants.dart';
 import 'package:cims/core/constants/app_text_styles.dart';
 import 'package:cims/core/utils/responsive.dart';
 import 'package:cims/core/widgets/app_scaffold.dart';
 import 'package:cims/core/widgets/badge_chip.dart';
+import 'package:cims/core/widgets/stat_card.dart';
 import 'package:cims/features/student/providers/student_dashboard_provider.dart';
 
 class StudentDashboardScreen extends ConsumerWidget {
@@ -18,8 +20,7 @@ class StudentDashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final bool isMobile = screenWidth < 600;
+    final bool isMobile = Responsive.isMobile(context);
 
     final padding = isMobile ? 16.0 : 24.0;
 
@@ -36,6 +37,7 @@ class StudentDashboardScreen extends ConsumerWidget {
         error: (e, st) => Center(child: Text('Error: $e')),
         data: (data) {
           if (data == null) {
+            final isDark = Theme.of(context).brightness == Brightness.dark;
             return Center(
               child: Padding(
                 padding: const EdgeInsets.all(32.0),
@@ -45,7 +47,7 @@ class StudentDashboardScreen extends ConsumerWidget {
                     Icon(
                       Icons.school_outlined,
                       size: 48,
-                      color: AppColors.textMuted,
+                      color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                     ),
                     SizedBox(height: 12),
                     Text('Dashboard not available', style: AppTextStyles.h3),
@@ -54,7 +56,7 @@ class StudentDashboardScreen extends ConsumerWidget {
                       'Sign in with a student account linked to an enrollment record.',
                       textAlign: TextAlign.center,
                       style: AppTextStyles.body.copyWith(
-                        color: AppColors.textMuted,
+                        color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                       ),
                     ),
                   ],
@@ -114,8 +116,7 @@ class _StudentHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final bool isMobile = screenWidth < 600;
+    final bool isMobile = Responsive.isMobile(context);
 
     final padding = isMobile ? 16.0 : 32.0;
     final titleFontSize = isMobile ? 18.0 : 26.0;
@@ -281,8 +282,7 @@ class _StudentStats extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final bool isMobile = screenWidth < 600;
+    final bool isMobile = Responsive.isMobile(context);
 
     final gpa = data.overview.stages.firstWhere(
       (s) => s.stage == data.overview.student.currentStage,
@@ -292,31 +292,35 @@ class _StudentStats extends StatelessWidget {
     final feeText = data.feeBalance > 0 ? 'PKR ${data.feeBalance ~/ 1000}k' : 'PKR 0';
 
     final children = [
-      _PortalStatCard(
+      StatCard(
         label: 'Attendance',
         value: '${data.attendancePercentage.toStringAsFixed(0)}%',
-        pill: 'Above 75% required',
-        tone: StatTone.success,
+        trend: 'Above 75% required',
+        trendUp: data.attendancePercentage >= 75,
+        tone: data.attendancePercentage >= 75 ? StatTone.success : StatTone.warning,
         icon: Icons.check_box_outlined,
       ),
-      _PortalStatCard(
+      StatCard(
         label: 'Current GPA',
         value: gpa == '—' ? 'N/A' : gpa,
-        pill: 'Good standing',
+        trend: 'Good standing',
+        trendUp: true,
         tone: StatTone.primary,
         icon: Icons.description_outlined,
       ),
-      _PortalStatCard(
+      StatCard(
         label: 'Fee Balance',
         value: feeText,
-        pill: data.feeBalance > 0 ? 'Due ${data.feeDueDate}' : 'Cleared',
+        trend: data.feeBalance > 0 ? 'Due ${data.feeDueDate}' : 'Cleared',
+        trendUp: data.feeBalance <= 0,
         tone: data.feeBalance > 0 ? StatTone.warning : StatTone.success,
         icon: Icons.account_balance_wallet_outlined,
       ),
-      _PortalStatCard(
+      StatCard(
         label: 'Subjects',
         value: '${data.subjectPerformance.length}',
-        pill: data.overview.sessionLabel,
+        trend: data.overview.sessionLabel,
+        trendUp: true,
         tone: StatTone.accent,
         icon: Icons.menu_book_outlined,
       ),
@@ -346,97 +350,14 @@ class _StudentStats extends StatelessWidget {
   }
 }
 
-enum StatTone { success, primary, warning, accent }
-
-class _PortalStatCard extends StatelessWidget {
-  final String label;
-  final String value;
-  final String pill;
-  final StatTone tone;
-  final IconData icon;
-
-  const _PortalStatCard({
-    required this.label,
-    required this.value,
-    required this.pill,
-    required this.tone,
-    required this.icon,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final bool isMobile = screenWidth < 600;
-
-    final (bg, fg, soft) = switch (tone) {
-      StatTone.success => (AppColors.success, AppColors.success, AppColors.successSoft),
-      StatTone.primary => (AppColors.primary, AppColors.primary, AppColors.primarySoft),
-      StatTone.warning => (AppColors.warning, AppColors.warning, AppColors.warningSoft),
-      _ => (AppColors.accent, AppColors.accent, AppColors.accentSoft),
-    };
-
-    return Container(
-      padding: EdgeInsets.all(isMobile ? 16.0 : 20.0),
-      decoration: BoxDecoration(
-        color: AppColors.darkSurface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.darkBorder),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  label,
-                  style: AppTextStyles.bodySm.copyWith(
-                    color: AppColors.darkTextMuted,
-                    fontSize: isMobile ? 11 : 12,
-                  ),
-                ),
-              ),
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: soft,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: fg, size: isMobile ? 16 : 20),
-              ),
-            ],
-          ),
-          SizedBox(height: isMobile ? 6 : 8),
-          Text(
-            value,
-            style: AppTextStyles.h1.copyWith(
-              fontSize: isMobile ? 20 : 24,
-            ),
-          ),
-          SizedBox(height: isMobile ? 12 : 16),
-          BadgeChip(label: pill, tone: _mapTone(tone)),
-        ],
-      ),
-    );
-  }
-
-  BadgeTone _mapTone(StatTone tone) => switch (tone) {
-        StatTone.success => BadgeTone.success,
-        StatTone.primary => BadgeTone.primary,
-        StatTone.warning => BadgeTone.warning,
-        _ => BadgeTone.accent,
-      };
-}
-
 class _AcademicSnapshot extends StatelessWidget {
   final StudentDashboardData data;
   const _AcademicSnapshot({required this.data});
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final bool isMobile = screenWidth < 600;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bool isMobile = Responsive.isMobile(context);
 
     final attProgress = data.totalSessions > 0 ? data.totalAttended / data.totalSessions : 0.0;
     final feeProgress = data.feeTotal > 0 ? data.feePaid / data.feeTotal : 1.0;
@@ -454,16 +375,22 @@ class _AcademicSnapshot extends StatelessWidget {
     return Container(
       padding: EdgeInsets.all(isMobile ? 16.0 : 20.0),
       decoration: BoxDecoration(
-        color: AppColors.darkSurface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.darkBorder),
+        color: isDark ? AppColors.darkSurface : AppColors.surface,
+        borderRadius: BorderRadius.circular(AppConstants.radiusLg),
+        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('Academic Snapshot', style: AppTextStyles.h2.copyWith(fontSize: isMobile ? 16 : 18)),
           SizedBox(height: 4),
-          Text('${data.overview.programCode} · ${data.overview.semesterValue}', style: TextStyle(color: AppColors.darkTextMuted, fontSize: isMobile ? 12 : 13)),
+          Text(
+            '${data.overview.programCode} · ${data.overview.semesterValue}',
+            style: TextStyle(
+              color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+              fontSize: isMobile ? 12 : 13,
+            ),
+          ),
           SizedBox(height: isMobile ? 16 : 24),
           _ProgressLine(
             label: 'Attendance',
@@ -513,8 +440,8 @@ class _ProgressLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final bool isMobile = screenWidth < 600;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bool isMobile = Responsive.isMobile(context);
 
     return Column(
       children: [
@@ -532,7 +459,7 @@ class _ProgressLine extends StatelessWidget {
             Text(
               value,
               style: TextStyle(
-                color: AppColors.darkTextMuted,
+                color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                 fontSize: isMobile ? 11 : 12,
               ),
             ),
@@ -544,7 +471,7 @@ class _ProgressLine extends StatelessWidget {
           child: LinearProgressIndicator(
             minHeight: 6,
             value: progress,
-            backgroundColor: AppColors.darkSurfaceAlt,
+            backgroundColor: isDark ? AppColors.darkSurfaceAlt : AppColors.surfaceAlt,
             color: color,
           ),
         ),
@@ -559,29 +486,38 @@ class _SubjectPerformance extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final bool isMobile = screenWidth < 600;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bool isMobile = Responsive.isMobile(context);
 
     final items = data.subjectPerformance;
 
     return Container(
       padding: EdgeInsets.all(isMobile ? 16.0 : 20.0),
       decoration: BoxDecoration(
-        color: AppColors.darkSurface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.darkBorder),
+        color: isDark ? AppColors.darkSurface : AppColors.surface,
+        borderRadius: BorderRadius.circular(AppConstants.radiusLg),
+        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('Subject Performance', style: AppTextStyles.h2.copyWith(fontSize: isMobile ? 16 : 18)),
           SizedBox(height: 4),
-          Text('This semester', style: TextStyle(color: AppColors.darkTextMuted, fontSize: isMobile ? 12 : 13)),
+          Text(
+            'This semester',
+            style: TextStyle(
+              color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+              fontSize: isMobile ? 12 : 13,
+            ),
+          ),
           SizedBox(height: isMobile ? 16 : 20),
           if (items.isEmpty)
             Padding(
               padding: EdgeInsets.all(16.0),
-              child: Text('No subjects recorded for this session.', style: TextStyle(color: AppColors.textMuted)),
+              child: Text(
+                'No subjects recorded for this session.',
+                style: TextStyle(color: isDark ? AppColors.darkTextMuted : AppColors.textMuted),
+              ),
             ),
           ...items.map(
             (item) => Padding(
@@ -592,7 +528,7 @@ class _SubjectPerformance extends StatelessWidget {
                     width: 32,
                     height: 32,
                     decoration: BoxDecoration(
-                      color: AppColors.primarySoft,
+                      color: isDark ? AppColors.primary.withValues(alpha: 0.16) : AppColors.primarySoft,
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: const Icon(Icons.menu_book_outlined, color: AppColors.primary, size: 16),
@@ -614,7 +550,7 @@ class _SubjectPerformance extends StatelessWidget {
                         Text(
                           item.attendance,
                           style: TextStyle(
-                            color: AppColors.darkTextMuted,
+                            color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                             fontSize: isMobile ? 11 : 12,
                           ),
                         ),
@@ -638,16 +574,16 @@ class _UpcomingClasses extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final bool isMobile = screenWidth < 600;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bool isMobile = Responsive.isMobile(context);
 
     final items = data.upcomingClasses;
 
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.darkSurface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.darkBorder),
+        color: isDark ? AppColors.darkSurface : AppColors.surface,
+        borderRadius: BorderRadius.circular(AppConstants.radiusLg),
+        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
       ),
       child: Column(
         children: [
@@ -669,7 +605,7 @@ class _UpcomingClasses extends StatelessWidget {
                       Text(
                         'Next ${items.length} sessions',
                         style: TextStyle(
-                          color: AppColors.darkTextMuted,
+                          color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                           fontSize: isMobile ? 12 : 13,
                         ),
                       ),
@@ -689,7 +625,10 @@ class _UpcomingClasses extends StatelessWidget {
           if (items.isEmpty)
             Padding(
               padding: EdgeInsets.all(32.0),
-              child: Text('No classes scheduled.', style: TextStyle(color: AppColors.textMuted)),
+              child: Text(
+                'No classes scheduled.',
+                style: TextStyle(color: isDark ? AppColors.darkTextMuted : AppColors.textMuted),
+              ),
             ),
           if (items.isNotEmpty && isMobile)
             ListView.builder(
@@ -702,7 +641,7 @@ class _UpcomingClasses extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                   decoration: BoxDecoration(
                     border: Border(
-                      top: BorderSide(color: AppColors.darkBorder),
+                      top: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.border),
                     ),
                   ),
                   child: Column(
@@ -741,8 +680,8 @@ class _UpcomingClasses extends StatelessWidget {
                                 ),
                                 Text(
                                   item.courseCode,
-                                  style: const TextStyle(
-                                    color: AppColors.darkTextMuted,
+                                  style: TextStyle(
+                                    color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                                     fontSize: 11,
                                   ),
                                 ),
@@ -793,7 +732,7 @@ class _UpcomingClasses extends StatelessWidget {
               children: [
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  color: AppColors.darkSurfaceAlt,
+                  color: isDark ? AppColors.darkSurfaceAlt : AppColors.surfaceAlt,
                   child: Row(
                     children: [
                       Expanded(flex: 28, child: Text('SUBJECT', style: AppTextStyles.labelSm.copyWith(fontSize: 11))),
@@ -808,8 +747,8 @@ class _UpcomingClasses extends StatelessWidget {
                 ...items.map(
                   (item) => Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                    decoration: const BoxDecoration(
-                      border: Border(top: BorderSide(color: AppColors.darkBorder)),
+                    decoration: BoxDecoration(
+                      border: Border(top: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.border)),
                     ),
                     child: Row(
                       children: [
@@ -840,7 +779,7 @@ class _UpcomingClasses extends StatelessWidget {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(item.subject, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w700)),
-                                    Text(item.courseCode, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppColors.darkTextMuted)),
+                                    Text(item.courseCode, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: isDark ? AppColors.darkTextMuted : AppColors.textMuted)),
                                   ],
                                 ),
                               ),

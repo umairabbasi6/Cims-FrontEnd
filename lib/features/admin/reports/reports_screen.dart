@@ -340,8 +340,7 @@ class _ReportsScreenState
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final bool isMobile = screenWidth < 600;
+    final bool isMobile = Responsive.isMobile(context);
 
     final role = AppSession.currentRole;
     
@@ -362,7 +361,9 @@ class _ReportsScreenState
                 Icon(
                   Icons.lock_outline_rounded,
                   size: 48,
-                  color: AppColors.darkTextMuted,
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? AppColors.darkTextMuted
+                      : AppColors.textMuted,
                 ),
                 SizedBox(height: 16),
                 Text(
@@ -374,7 +375,9 @@ class _ReportsScreenState
                 Text(
                   'This section is available to administrators only.',
                   style: AppTextStyles.body.copyWith(
-                    color: AppColors.darkTextMuted,
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? AppColors.darkTextMuted
+                        : AppColors.textMuted,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -410,8 +413,7 @@ class _ReportsScreenState
   }
 
   Widget _statsSection(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final bool isMobile = screenWidth < 600;
+    final bool isMobile = Responsive.isMobile(context);
     final bool isTablet = Responsive.isTablet(context);
 
     final activeCount = ref.watch(activeStudentCountProvider);
@@ -540,8 +542,7 @@ class _ReportsScreenState
   }
 
   Widget _programAnalyticsCard(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final bool isMobile = screenWidth < 600;
+    final bool isMobile = Responsive.isMobile(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final barsAsync = ref.watch(programEnrollmentBarsProvider);
@@ -621,7 +622,7 @@ class _ReportsScreenState
                       child: Text(
                         'No student data',
                         style: AppTextStyles.body.copyWith(
-                          color: AppColors.darkTextMuted,
+                          color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                         ),
                       ),
                     );
@@ -697,8 +698,7 @@ class _ReportsScreenState
   }
 
   Widget _passRateTrendCard() {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final bool isMobile = screenWidth < 600;
+    final bool isMobile = Responsive.isMobile(context);
 
     final trendAsync = ref.watch(passRateTrendProvider);
 
@@ -748,7 +748,7 @@ class _ReportsScreenState
                       child: Text(
                         'No trend data available',
                         style: AppTextStyles.body.copyWith(
-                          color: AppColors.darkTextMuted,
+                          color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                         ),
                       ),
                     );
@@ -819,10 +819,10 @@ class _ReportsScreenState
   }
 
   Widget _pdfReportsCard(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final bool isMobile = screenWidth < 600;
+    final bool isMobile = Responsive.isMobile(context);
 
     final studentsAsync = ref.watch(studentsListProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final sessionsAsync = ref.watch(sessionsListProvider);
     final paymentsAsync = ref.watch(reportPaymentOptionsProvider);
     final programsAsync = ref.watch(programsProvider);
@@ -938,7 +938,9 @@ class _ReportsScreenState
         description: 'Official receipt with QR · stamp ready',
         typeSelector: Text(
           'Single Payment',
-          style: AppTextStyles.bodySm.copyWith(color: AppColors.darkTextMuted),
+          style: AppTextStyles.bodySm.copyWith(
+            color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+          ),
         ),
         selector: _paymentDropdown(
           value: paymentId,
@@ -1071,7 +1073,6 @@ class _ReportsScreenState
       ),
     ];
 
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkSurface : AppColors.surface,
@@ -1196,7 +1197,9 @@ class _ReportsScreenState
       return Text(
         'No programs',
         style: AppTextStyles.caption.copyWith(
-          color: AppColors.darkTextMuted,
+          color: Theme.of(context).brightness == Brightness.dark
+              ? AppColors.darkTextMuted
+              : AppColors.textMuted,
         ),
       );
     }
@@ -1254,7 +1257,9 @@ class _ReportsScreenState
       return Text(
         'No students',
         style: AppTextStyles.caption.copyWith(
-          color: AppColors.darkTextMuted,
+          color: Theme.of(context).brightness == Brightness.dark
+              ? AppColors.darkTextMuted
+              : AppColors.textMuted,
         ),
       );
     }
@@ -1292,7 +1297,9 @@ class _ReportsScreenState
       return Text(
         'No sessions',
         style: AppTextStyles.caption.copyWith(
-          color: AppColors.darkTextMuted,
+          color: Theme.of(context).brightness == Brightness.dark
+              ? AppColors.darkTextMuted
+              : AppColors.textMuted,
         ),
       );
     }
@@ -1330,7 +1337,9 @@ class _ReportsScreenState
       return Text(
         'No payments found',
         style: AppTextStyles.caption.copyWith(
-          color: AppColors.darkTextMuted,
+          color: Theme.of(context).brightness == Brightness.dark
+              ? AppColors.darkTextMuted
+              : AppColors.textMuted,
         ),
       );
     }

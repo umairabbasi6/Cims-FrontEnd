@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import 'package:cims/core/constants/app_colors.dart';
 import 'package:cims/core/constants/app_text_styles.dart';
+import 'package:cims/core/utils/responsive.dart';
 import 'package:cims/core/widgets/app_scaffold.dart';
 import 'package:cims/core/widgets/badge_chip.dart';
 
@@ -23,6 +24,7 @@ class StudentFeeStatusScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final studentAsync = ref.watch(currentStudentProvider);
     final sessionAsync = ref.watch(currentAcademicSessionProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
 
 
@@ -128,7 +130,7 @@ class StudentFeeStatusScreen extends ConsumerWidget {
                 children: [
                   LayoutBuilder(
                     builder: (context, constraints) {
-                      if (constraints.maxWidth < 600) {
+                      if (Responsive.isMobile(context)) {
                         // Mobile layout: 2 columns
                         return Wrap(
                           spacing: 12,
@@ -228,15 +230,15 @@ class StudentFeeStatusScreen extends ConsumerWidget {
                   if (currentDue != null)
                     Container(
                       decoration: BoxDecoration(
-                        color: AppColors.darkSurface,
+                        color: isDark ? AppColors.darkSurface : Colors.white,
                         borderRadius: BorderRadius.circular(18),
-                        border: Border.all(color: AppColors.darkBorder),
+                        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
                       ),
                       child: Padding(
                         padding: const EdgeInsets.all(20),
                         child: LayoutBuilder(
                           builder: (context, constraints) {
-                            if (constraints.maxWidth < 600) {
+                            if (Responsive.isMobile(context)) {
                               // Mobile layout: stack vertically
                               return Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -247,7 +249,7 @@ class StudentFeeStatusScreen extends ConsumerWidget {
                                         width: 36,
                                         height: 36,
                                         decoration: BoxDecoration(
-                                          color: AppColors.warningSoft,
+                                          color: isDark ? AppColors.warning.withValues(alpha: 0.16) : AppColors.warningSoft,
                                           borderRadius: BorderRadius.circular(12),
                                         ),
                                         child: const Icon(Icons.receipt_long_outlined, color: AppColors.warning),
@@ -262,8 +264,11 @@ class StudentFeeStatusScreen extends ConsumerWidget {
                                               style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
                                             ),
                                             Text(
-                                              "INV-${currentDue['id'] ?? '—'} · ${session?.name ?? ''}",
-                                              style: const TextStyle(color: AppColors.darkTextMuted, fontSize: 14),
+                                              "${currentDue['id'] != null ? 'INV-${currentDue['id']}' : currentDue['fee_structure_id'] != null ? 'FEE-${currentDue['fee_structure_id']}' : 'DUE-${student.studentIdCode}'} · ${session?.name ?? ''}",
+                                              style: TextStyle(
+                                                color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                                                fontSize: 14,
+                                              ),
                                             ),
                                           ],
                                         ),
@@ -274,12 +279,12 @@ class StudentFeeStatusScreen extends ConsumerWidget {
                                   Row(
                                     children: [
                                       Text(
-                                        formatCurrency(currentDue['due_amount'], 'PKR 22,000'),
+                                        formatCurrency(currentDue['due_amount'], 'PKR 0'),
                                         style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 20),
                                       ),
                                       const SizedBox(width: 12),
                                       BadgeChip(
-                                        label: formatDueDate(currentDue['due_date'], 'Due May 15'),
+                                        label: formatDueDate(currentDue['due_date'], 'Cleared'),
                                         tone: currentDue['is_overdue'] == true ? BadgeTone.danger : BadgeTone.warning,
                                       ),
                                     ],
@@ -292,16 +297,19 @@ class StudentFeeStatusScreen extends ConsumerWidget {
                                         height: 40,
                                         decoration: BoxDecoration(
                                           borderRadius: BorderRadius.circular(12),
-                                          border: Border.all(color: AppColors.darkBorder),
+                                          border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
                                         ),
-                                        child: const Icon(Icons.visibility_outlined, color: AppColors.darkTextMuted),
+                                        child: Icon(
+                                          Icons.visibility_outlined,
+                                          color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                                        ),
                                       ),
                                       const SizedBox(width: 12),
                                       Expanded(
                                         child: ElevatedButton.icon(
                                           onPressed: () {},
                                           icon: const Icon(Icons.account_balance_wallet_outlined),
-                                          label: Text('Pay ${formatCurrency(currentDue['due_amount'], 'PKR 22,000')}'),
+                                          label: Text('Pay ${formatCurrency(currentDue['due_amount'], 'PKR 0')}'),
                                         ),
                                       ),
                                     ],
@@ -319,7 +327,7 @@ class StudentFeeStatusScreen extends ConsumerWidget {
                                           width: 36,
                                           height: 36,
                                           decoration: BoxDecoration(
-                                            color: AppColors.warningSoft,
+                                            color: isDark ? AppColors.warning.withValues(alpha: 0.16) : AppColors.warningSoft,
                                             borderRadius: BorderRadius.circular(12),
                                           ),
                                           child: const Icon(Icons.receipt_long_outlined, color: AppColors.warning),
@@ -334,19 +342,21 @@ class StudentFeeStatusScreen extends ConsumerWidget {
                                                 style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 20),
                                               ),
                                               Text(
-                                                "INV-${currentDue['id'] ?? '—'} · ${session?.name ?? ''}",
-                                                style: const TextStyle(color: AppColors.darkTextMuted),
+                                                "${currentDue['id'] != null ? 'INV-${currentDue['id']}' : currentDue['fee_structure_id'] != null ? 'FEE-${currentDue['fee_structure_id']}' : 'DUE-${student.studentIdCode}'} · ${session?.name ?? ''}",
+                                                style: TextStyle(
+                                                  color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                                                ),
                                               ),
                                             ],
                                           ),
                                         ),
                                         Text(
-                                          formatCurrency(currentDue['due_amount'], 'PKR 22,000'),
+                                          formatCurrency(currentDue['due_amount'], 'PKR 0'),
                                           style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
                                         ),
                                         const SizedBox(width: 12),
                                         BadgeChip(
-                                          label: formatDueDate(currentDue['due_date'], 'Due May 15'),
+                                          label: formatDueDate(currentDue['due_date'], 'Cleared'),
                                           tone: currentDue['is_overdue'] == true ? BadgeTone.danger : BadgeTone.warning,
                                         ),
                                         const SizedBox(width: 12),
@@ -355,9 +365,12 @@ class StudentFeeStatusScreen extends ConsumerWidget {
                                           height: 40,
                                           decoration: BoxDecoration(
                                             borderRadius: BorderRadius.circular(12),
-                                            border: Border.all(color: AppColors.darkBorder),
+                                            border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
                                           ),
-                                          child: const Icon(Icons.visibility_outlined, color: AppColors.darkTextMuted),
+                                          child: Icon(
+                                            Icons.visibility_outlined,
+                                            color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                                          ),
                                         ),
                                       ],
                                     ),
@@ -366,7 +379,7 @@ class StudentFeeStatusScreen extends ConsumerWidget {
                                   ElevatedButton.icon(
                                     onPressed: () {},
                                     icon: const Icon(Icons.account_balance_wallet_outlined),
-                                    label: Text('Pay ${formatCurrency(currentDue['due_amount'], 'PKR 22,000')}'),
+                                    label: Text('Pay ${formatCurrency(currentDue['due_amount'], 'PKR 0')}'),
                                   ),
                                 ],
                               );
@@ -378,9 +391,9 @@ class StudentFeeStatusScreen extends ConsumerWidget {
                   else
                     Container(
                       decoration: BoxDecoration(
-                        color: AppColors.darkSurface,
+                        color: isDark ? AppColors.darkSurface : Colors.white,
                         borderRadius: BorderRadius.circular(18),
-                        border: Border.all(color: AppColors.darkBorder),
+                        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
                       ),
                       padding: const EdgeInsets.all(20),
                       alignment: Alignment.center,
@@ -392,7 +405,7 @@ class StudentFeeStatusScreen extends ConsumerWidget {
                           Text(
                             'No outstanding payments. You are all caught up!',
                             style: AppTextStyles.body.copyWith(
-                              color: AppColors.darkTextMuted,
+                              color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -402,9 +415,9 @@ class StudentFeeStatusScreen extends ConsumerWidget {
                   const SizedBox(height: 20),
                   Container(
                     decoration: BoxDecoration(
-                      color: AppColors.darkSurface,
+                      color: isDark ? AppColors.darkSurface : Colors.white,
                       borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: AppColors.darkBorder),
+                      border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
                     ),
                     child: Column(
                       children: [
@@ -418,7 +431,10 @@ class StudentFeeStatusScreen extends ConsumerWidget {
                                   children: [
                                     Text('Payment History', style: AppTextStyles.h2),
                                     const SizedBox(height: 4),
-                                    const Text('Last 12 months', style: TextStyle(color: AppColors.darkTextMuted)),
+                                    Text(
+                                      'Last 12 months',
+                                      style: TextStyle(color: isDark ? AppColors.darkTextMuted : AppColors.textMuted),
+                                    ),
                                   ],
                                 ),
                               ),
@@ -432,7 +448,7 @@ class StudentFeeStatusScreen extends ConsumerWidget {
                             children: [
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                                color: AppColors.darkSurfaceAlt,
+                                color: isDark ? AppColors.darkSurfaceAlt : AppColors.surfaceAlt,
                                 child: Row(
                                   children: [
                                     SizedBox(width: 100, child: Text('RECEIPT', style: AppTextStyles.labelSm)),
@@ -451,14 +467,16 @@ class StudentFeeStatusScreen extends ConsumerWidget {
                                   alignment: Alignment.center,
                                   child: Text(
                                     'No payments recorded yet.',
-                                    style: TextStyle(color: AppColors.darkTextMuted),
+                                    style: TextStyle(color: isDark ? AppColors.darkTextMuted : AppColors.textMuted),
                                   ),
                                 )
                               else
                                 ...displayHistory.map(
                                   (row) => Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                                    decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.darkBorder))),
+                                    decoration: BoxDecoration(
+                                      border: Border(top: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.border)),
+                                    ),
                                     child: Row(
                                       children: [
                                         SizedBox(width: 100, child: Text(row.$1, style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w700))),
@@ -516,6 +534,7 @@ class _FeeMetric extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final color = switch (tone) {
       BadgeTone.primary => AppColors.primary,
       BadgeTone.warning => AppColors.warning,
@@ -526,16 +545,23 @@ class _FeeMetric extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.darkSurface,
+        color: isDark ? AppColors.darkSurface : Colors.white,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.darkBorder),
+        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Expanded(child: Text(label, style: AppTextStyles.bodySm.copyWith(color: AppColors.darkTextMuted))),
+              Expanded(
+                child: Text(
+                  label,
+                  style: AppTextStyles.bodySm.copyWith(
+                    color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                  ),
+                ),
+              ),
               Container(
                 width: 40,
                 height: 40,

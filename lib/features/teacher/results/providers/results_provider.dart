@@ -8,6 +8,17 @@ class ResultsQuery {
   final int sessionId;
 
   const ResultsQuery({required this.subjectId, required this.sessionId});
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ResultsQuery &&
+          runtimeType == other.runtimeType &&
+          subjectId == other.subjectId &&
+          sessionId == other.sessionId;
+
+  @override
+  int get hashCode => subjectId.hashCode ^ sessionId.hashCode;
 }
 
 final classResultsProvider =

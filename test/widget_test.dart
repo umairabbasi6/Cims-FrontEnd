@@ -1,8 +1,15 @@
 import 'package:cims/core/widgets/app_scaffold.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 void main() {
+  setUpAll(() {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    GoogleFonts.config.allowRuntimeFetching = false;
+  });
+
   Future<void> pumpShell(
     WidgetTester tester, {
     required Size size,
@@ -13,16 +20,18 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: AppScaffold(
-          title: 'Students',
-          subtitle: 'People',
-          currentRoute: '/students',
-          role: 'admin',
-          onNavigate: (_) {},
-          body: const SizedBox(
-            height: 200,
-            child: Text('Body'),
+      ProviderScope(
+        child: MaterialApp(
+          home: AppScaffold(
+            title: 'Students',
+            subtitle: 'People',
+            currentRoute: '/students',
+            role: 'admin',
+            onNavigate: (_) {},
+            body: const SizedBox(
+              height: 200,
+              child: Text('Body'),
+            ),
           ),
         ),
       ),

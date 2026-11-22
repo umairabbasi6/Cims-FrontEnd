@@ -193,14 +193,38 @@ class FeesApiService {
     return response.data!;
   }
 
+  Future<Map<String, dynamic>> getSummary({int? sessionId}) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/fees/summary',
+      queryParameters: {
+        if (sessionId != null) 'session_id': sessionId,
+      },
+    );
+    return response.data!;
+  }
+
+  Future<String> bulkGenerateFees({
+    required int programId,
+    required int sessionId,
+  }) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/fees/bulk-generate',
+      queryParameters: {
+        'program_id': programId,
+        'session_id': sessionId,
+      },
+    );
+    return response.data?['message'] ?? 'Fee records generated';
+  }
+
   List<Map<String, dynamic>> _unwrapList(Object? data) {
     if (data is List) {
       return data
           .map((e) => Map<String, dynamic>.from(e as Map))
           .toList();
     }
-    if (data is Map<String, dynamic>) {
-      final inner = data['payments'] ?? data['assignments'] ?? data['items'];
+    if (data is Map) {
+      final inner = data['payments'] ?? data['assignments'] ?? data['items'] ?? data['data'];
       if (inner is List) {
         return inner
             .map((e) => Map<String, dynamic>.from(e as Map))

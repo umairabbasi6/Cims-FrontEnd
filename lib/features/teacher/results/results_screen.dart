@@ -7,11 +7,10 @@ import 'package:cims/features/admin/subjects/providers/subject_provider.dart';
 import 'package:cims/features/admin/sessions/providers/session_provider.dart';
 import 'package:cims/features/admin/enrollments/providers/enrollment_provider.dart';
 import 'package:cims/features/admin/staff/providers/staff_provider.dart';
-import 'package:cims/features/timetable/providers/timetable_provider.dart';
-import 'package:cims/features/timetable/services/timetable_service.dart' as api;
 
 import 'package:cims/core/constants/app_colors.dart';
 import 'package:cims/core/constants/app_text_styles.dart';
+import 'package:cims/core/utils/responsive.dart';
 import 'package:cims/core/widgets/app_scaffold.dart';
 import 'package:cims/core/widgets/badge_chip.dart';
 import 'package:cims/core/widgets/stat_card.dart';
@@ -71,11 +70,10 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
       final enrollmentId = enrollment['id'] as int;
 
       // Extract student details
-      final student = (enrollment['student'] is Map)
-          ? enrollment['student'] as Map<String, dynamic>
-          : enrollment;
-      final name = (student['full_name'] ?? student['name'] ?? student['student_name'] ?? 'Unknown Student') as String;
-      final roll = (student['roll_no'] ?? student['registration_number'] ?? student['student_id_code'] ?? '-') as String;
+      final studentRaw = enrollment['student'];
+      final Map<dynamic, dynamic> student = (studentRaw is Map) ? studentRaw : enrollment;
+      final name = (student['full_name'] ?? student['name'] ?? student['student_name'] ?? 'Unknown Student').toString();
+      final roll = (student['student_id_code'] ?? student['roll_no'] ?? student['registration_number'] ?? '-').toString();
 
       String initials = '';
       if (name.isNotEmpty) {
@@ -101,7 +99,7 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
         final tTotal = parseDouble(matchingResult['theory_total'] ?? 100.0);
         final pMarks = matchingResult['practical_marks'] != null ? parseDouble(matchingResult['practical_marks']) : null;
         final pTotal = matchingResult['practical_total'] != null ? parseDouble(matchingResult['practical_total']) : null;
-        final grade = (matchingResult['grade_letter'] ?? matchingResult['grade'] ?? '-') as String;
+        final grade = (matchingResult['grade_letter'] ?? matchingResult['grade'] ?? '-').toString();
         final gpaVal = matchingResult['gpa_points'] ?? matchingResult['gpa'];
         final gpa = gpaVal != null ? parseDouble(gpaVal).toStringAsFixed(2) : '-';
 
@@ -170,11 +168,12 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
       builder: (ctx) {
         return StatefulBuilder(
           builder: (context, setState) {
+            final isDark = Theme.of(context).brightness == Brightness.dark;
             return AlertDialog(
-              backgroundColor: AppColors.darkSurface,
+              backgroundColor: isDark ? AppColors.darkSurface : Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
-                side: const BorderSide(color: AppColors.darkBorder),
+                side: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.border),
               ),
               title: Row(
                 children: [
@@ -205,7 +204,9 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
                       ),
                       Text(
                         'Roll No: ${record.rollNo}',
-                        style: AppTextStyles.caption.copyWith(color: AppColors.darkTextMuted),
+                        style: AppTextStyles.caption.copyWith(
+                          color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                        ),
                       ),
                       const SizedBox(height: 16),
                       
@@ -430,13 +431,9 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final bool isMobile = screenWidth < 600;
+    final bool isMobile = Responsive.isMobile(context);
 
     final isTeacher = AppSession.currentRole == 'teacher';
-
-    final sessionAsync = ref.watch(currentAcademicSessionProvider);
-    final activeSessionId = sessionAsync.value?.id;
 
     final sessionsAsync = ref.watch(sessionsListProvider);
     final subjectsAsync = ref.watch(subjectsListProvider);
@@ -459,26 +456,17 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
     final List<({int id, String name})> dropDownSubjects = [];
 
     if (isTeacher) {
-      final staffAsync = ref.watch(currentStaffProvider);
-      final staff = staffAsync.value;
-
-      final slotsAsync = activeSessionId != null && staff != null
-          ? ref.watch(timetableSlotsListProvider((
-              sessionId: activeSessionId,
-              stage: null,
-              staffId: staff.id,
-            )))
-          : const AsyncValue<List<api.TimetableSlot>>.data([]);
-
-      final uniqueSubjects = <int, String>{};
-      if (slotsAsync.value != null) {
-        for (final slot in slotsAsync.value!) {
-          uniqueSubjects[slot.subjectId] = slot.subjectName;
+      final teacherSubsAsync = ref.watch(teacherAssignedSubjectsProvider);
+      final assignedSubs = teacherSubsAsync.value;
+      if (assignedSubs != null && assignedSubs.isNotEmpty) {
+        for (final sub in assignedSubs) {
+          dropDownSubjects.add((id: sub.id, name: sub.name));
+        }
+      } else if (subjectsAsync.value != null) {
+        for (final sub in subjectsAsync.value!) {
+          dropDownSubjects.add((id: sub.id, name: sub.name));
         }
       }
-      dropDownSubjects.addAll(
-        uniqueSubjects.entries.map((e) => (id: e.key, name: e.value)),
-      );
     } else {
       if (subjectsAsync.value != null) {
         for (final sub in subjectsAsync.value!) {
@@ -523,10 +511,10 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
     }
 
     // 4. Load enrollments and results
-    final enrollmentsAsync = _selectedSubjectId != null && _selectedSessionId != null
+    final enrollmentsAsync = _selectedSubjectId != null
         ? ref.watch(subjectEnrollmentsProvider(SubjectEnrollmentsArgs(
             subjectId: _selectedSubjectId!,
-            sessionId: _selectedSessionId!,
+            sessionId: _selectedSessionId,
           )))
         : const AsyncValue<List<Map<String, dynamic>>>.data([]);
 
@@ -588,8 +576,12 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
                 .map((s) => DropdownMenuItem<int>(value: s.id, child: Text(s.name)))
                 .toList();
 
+            final safeSelectedSubjectId = dropDownSubjects.any((s) => s.id == _selectedSubjectId)
+                ? _selectedSubjectId
+                : (dropDownSubjects.isNotEmpty ? dropDownSubjects.first.id : null);
+
             return DropdownButtonFormField<int>(
-              value: _selectedSubjectId,
+              value: safeSelectedSubjectId,
               decoration: const InputDecoration(labelText: 'SUBJECT'),
               dropdownColor: Theme.of(context).brightness == Brightness.dark ? AppColors.darkSurface : AppColors.surface,
               items: items,
@@ -616,8 +608,12 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
                 .map((s) => DropdownMenuItem<int>(value: s.id, child: Text(s.name)))
                 .toList();
 
+            final safeSelectedSessionId = sessions.any((s) => s.id == _selectedSessionId)
+                ? _selectedSessionId
+                : (sessions.isNotEmpty ? sessions.first.id : null);
+
             return DropdownButtonFormField<int>(
-              value: _selectedSessionId,
+              value: safeSelectedSessionId,
               decoration: const InputDecoration(labelText: 'SESSION'),
               dropdownColor: Theme.of(context).brightness == Brightness.dark ? AppColors.darkSurface : AppColors.surface,
               items: items,
@@ -791,11 +787,13 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
     final hasError = enrollmentsAsync.hasError || resultsAsync.hasError;
     final errorMessage = enrollmentsAsync.error?.toString() ?? resultsAsync.error?.toString() ?? '';
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.darkSurface,
+        color: isDark ? AppColors.darkSurface : Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.darkBorder),
+        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -810,13 +808,13 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
                 Text(
                   'Tap entry icon to record marks • grade auto-calculates',
                   style: AppTextStyles.body.copyWith(
-                    color: AppColors.darkTextMuted,
+                    color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                   ),
                 ),
               ],
             ),
           ),
-          Divider(height: 1, color: AppColors.darkBorder),
+          Divider(height: 1, color: isDark ? AppColors.darkBorder : AppColors.border),
           if (isLoading)
             const Padding(
               padding: EdgeInsets.all(32.0),
@@ -838,7 +836,9 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
               child: Center(
                 child: Text(
                   'No students enrolled in this subject.',
-                  style: AppTextStyles.body.copyWith(color: AppColors.darkTextMuted),
+                  style: AppTextStyles.body.copyWith(
+                    color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                  ),
                 ),
               ),
             )
@@ -847,7 +847,7 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: records.length,
-              separatorBuilder: (_, __) => Divider(height: 1, color: AppColors.darkBorder),
+              separatorBuilder: (_, __) => Divider(height: 1, color: isDark ? AppColors.darkBorder : AppColors.border),
               itemBuilder: (context, index) {
                 return _buildStudentResultMobileCard(records[index]);
               },
@@ -858,7 +858,7 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
                 Container(
                   height: 52,
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  color: AppColors.darkSurfaceAlt,
+                  color: isDark ? AppColors.darkSurfaceAlt : AppColors.surfaceAlt,
                   child: Row(
                     children: [
                       _header('STUDENT', 2.4),
@@ -880,6 +880,7 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
   }
 
   Widget _buildStudentResultMobileCard(ResultRecord e) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -918,7 +919,7 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
                     Text(
                       e.rollNo,
                       style: AppTextStyles.caption.copyWith(
-                        color: AppColors.darkTextMuted,
+                        color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                       ),
                     ),
                   ],
@@ -936,12 +937,14 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
                   height: 36,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: AppColors.darkBorder),
+                    border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
                   ),
                   child: Icon(
                     e.status == 'Graded' ? Icons.edit_outlined : Icons.add_chart_rounded,
                     size: 18,
-                    color: e.status == 'Graded' ? AppColors.darkTextMuted : AppColors.primary,
+                    color: e.status == 'Graded'
+                        ? (isDark ? AppColors.darkTextMuted : AppColors.textMuted)
+                        : AppColors.primary,
                   ),
                 ),
               ),
@@ -966,6 +969,7 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
   }
 
   Widget _buildMetric(String label, String value) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -973,7 +977,7 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
           label,
           style: AppTextStyles.caption.copyWith(
             fontSize: 10,
-            color: AppColors.darkTextMuted,
+            color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
           ),
         ),
         const SizedBox(height: 4),
@@ -988,6 +992,7 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
   }
 
   Widget _buildMetricWidget(String label, Widget child) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -995,7 +1000,7 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
           label,
           style: AppTextStyles.caption.copyWith(
             fontSize: 10,
-            color: AppColors.darkTextMuted,
+            color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
           ),
         ),
         const SizedBox(height: 4),
@@ -1005,11 +1010,12 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
   }
 
   Widget _resultRow(ResultRecord e) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         border: Border(
-          top: BorderSide(color: AppColors.darkBorder),
+          top: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.border),
         ),
       ),
       child: Row(
@@ -1051,7 +1057,7 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
                       Text(
                         e.rollNo,
                         style: AppTextStyles.caption.copyWith(
-                          color: AppColors.darkTextMuted,
+                          color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -1092,7 +1098,9 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
                   : 'N/A',
               style: AppTextStyles.body.copyWith(
                 fontWeight: FontWeight.w700,
-                color: e.hasPractical ? null : Colors.white.withValues(alpha: 0.3),
+                color: e.hasPractical
+                    ? null
+                    : (isDark ? Colors.white.withValues(alpha: 0.3) : AppColors.textMuted.withValues(alpha: 0.5)),
               ),
             ),
           ),
@@ -1128,12 +1136,14 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
                   height: 36,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: AppColors.darkBorder),
+                    border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
                   ),
                   child: Icon(
                     e.status == 'Graded' ? Icons.edit_outlined : Icons.add_chart_rounded,
                     size: 18,
-                    color: e.status == 'Graded' ? AppColors.darkTextMuted : AppColors.primary,
+                    color: e.status == 'Graded'
+                        ? (isDark ? AppColors.darkTextMuted : AppColors.textMuted)
+                        : AppColors.primary,
                   ),
                 ),
               ),

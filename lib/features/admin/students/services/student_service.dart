@@ -194,4 +194,19 @@ class StudentService {
     );
     return StudentApiModel.fromJson(response.data!);
   }
+
+  Future<String> bulkPromoteStudents(int sessionId) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/students/bulk-promote',
+      queryParameters: {'session_id': sessionId},
+    );
+    return response.data?['message'] ?? 'Students promoted successfully';
+  }
+
+  Future<String> bulkGraduateStudents() async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/students/bulk-graduate',
+    );
+    return response.data?['message'] ?? 'Eligible students graduated successfully';
+  }
 }

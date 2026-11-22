@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cims/features/admin/staff/models/staff_api_model.dart';
 import 'package:cims/features/admin/staff/repository/staff_repository.dart';
 import 'package:cims/features/auth/providers/auth_provider.dart';
+import 'package:cims/features/admin/sessions/providers/session_provider.dart';
+import 'package:cims/features/admin/subjects/models/subject_api_model.dart';
+import 'package:cims/features/admin/subjects/providers/subject_provider.dart';
 
 final staffRepositoryProvider =
     Provider<StaffRepository>((ref) {
@@ -52,7 +55,7 @@ final currentStaffProvider = FutureProvider.autoDispose<StaffApiModel?>((ref) as
       final matchAllParts = parts.every((part) => 
         fullNameLower.contains(part) || 
         firstNameLower.contains(part) || 
-        (s.lastName?.toLowerCase().contains(part) ?? false)
+        s.lastName.toLowerCase().contains(part)
       );
       if (matchAllParts) return true;
     }
@@ -61,4 +64,43 @@ final currentStaffProvider = FutureProvider.autoDispose<StaffApiModel?>((ref) as
   }).firstOrNull;
 
   return match;
+});
+
+/// The subjects assigned to the logged-in teacher for the active academic session.
+final teacherAssignedSubjectsProvider = FutureProvider.autoDispose<List<SubjectApiModel>>((ref) async {
+  final staff = await ref.watch(currentStaffProvider.future);
+  if (staff == null) return [];
+
+  final session = await ref.watch(currentAcademicSessionProvider.future);
+  final sessionId = session?.id;
+
+  try {
+    final res = await ref.read(staffRepositoryProvider).getStaffSubjects(staff.id, sessionId: sessionId);
+    final assignments = res['assignments'] as List? ?? [];
+    final allSubjects = ref.watch(subjectsListProvider).value ?? [];
+    final subjectMap = {for (final s in allSubjects) s.id: s};
+
+    final List<SubjectApiModel> list = [];
+    for (var a in assignments) {
+      final rawSub = (a is Map) ? a['subject'] : null;
+      if (rawSub is Map) {
+        final subId = rawSub['id'] as int? ?? 0;
+        final fullSub = subjectMap[subId];
+        list.add(SubjectApiModel(
+          id: subId,
+          name: rawSub['name'] as String? ?? (fullSub?.name ?? ''),
+          code: rawSub['code'] as String? ?? (fullSub?.code ?? ''),
+          stage: fullSub?.stage ?? (rawSub['stage'] as int? ?? 1),
+          creditHours: (rawSub['credit_hours'] as num?)?.toDouble() ?? (fullSub?.creditHours ?? 3.0),
+          hasPractical: rawSub['has_practical'] as bool? ?? (fullSub?.hasPractical ?? false),
+          isActive: true,
+          createdAt: DateTime.now(),
+          program: fullSub?.program,
+        ));
+      }
+    }
+    return list;
+  } catch (e) {
+    return [];
+  }
 });

@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:cims/core/session/app_session.dart';
 import 'package:cims/core/session/auth_session_controller.dart';
 import 'package:cims/core/session/route_guards.dart';
+import 'package:cims/core/constants/app_colors.dart';
 import 'package:cims/features/auth/login_screen.dart';
 
 import 'package:cims/features/admin/dashboard/admin_dashboard.dart';
@@ -25,6 +26,7 @@ import 'package:cims/features/admin/departments/departments_screen.dart';
 import 'package:cims/features/admin/programs/programs_screen.dart';
 import 'package:cims/features/admin/sessions/sessions_screen.dart';
 import 'package:cims/features/admin/subjects/subjects_screen.dart';
+import 'package:cims/features/admin/enrollments/enrollments_screen.dart';
 
 import 'package:cims/features/timetable/timetable_screen.dart';
 
@@ -59,6 +61,7 @@ class AppRouter {
   static const programs = '/programs';
   static const sessions = '/sessions';
   static const subjects = '/subjects';
+  static const enrollments = '/enrollments';
 
   static const timetable = '/timetable';
 
@@ -312,6 +315,27 @@ class AppRouter {
       ),
 
       // =================================================
+      // ENROLLMENTS
+      // =================================================
+
+      GoRoute(
+        path: enrollments,
+        name: 'enrollments',
+
+        pageBuilder: (context, state) {
+          return _fadeTransition(
+            state,
+
+            EnrollmentsScreen(
+              onNavigate: (route) {
+                context.go(route);
+              },
+            ),
+          );
+        },
+      ),
+
+      // =================================================
       // TIMETABLE
       // =================================================
 
@@ -536,9 +560,10 @@ class AppRouter {
     // =====================================================
 
     errorPageBuilder: (context, state) {
+      final isDark = Theme.of(context).brightness == Brightness.dark;
       return MaterialPage(
         child: Scaffold(
-          backgroundColor: const Color(0xFF06080F),
+          backgroundColor: isDark ? AppColors.darkBg : AppColors.bg,
 
           body: Center(
             child: Column(
@@ -546,18 +571,18 @@ class AppRouter {
                   MainAxisAlignment.center,
 
               children: [
-                const Icon(
+                Icon(
                   Icons.error_outline_rounded,
-                  color: Colors.white,
+                  color: isDark ? AppColors.darkText : AppColors.text,
                   size: 72,
                 ),
 
                 const SizedBox(height: 20),
 
-                const Text(
+                Text(
                   'Page Not Found',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: isDark ? AppColors.darkText : AppColors.text,
                     fontSize: 28,
                     fontWeight: FontWeight.w700,
                   ),
@@ -565,12 +590,11 @@ class AppRouter {
 
                 const SizedBox(height: 10),
 
-                Text(state.error.toString(),
-
-                  style: const TextStyle(
-                    color: Colors.white70,
+                Text(
+                  state.error.toString(),
+                  style: TextStyle(
+                    color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                   ),
-
                   textAlign: TextAlign.center,
                 ),
 

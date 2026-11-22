@@ -187,8 +187,20 @@ class _HeroBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = Responsive.isMobile(context);
+
+    String greeting;
+    final hour = DateTime.now().hour;
+    if (hour < 12) {
+      greeting = 'Good morning';
+    } else if (hour < 17) {
+      greeting = 'Good afternoon';
+    } else {
+      greeting = 'Good evening';
+    }
+
     return Container(
-      padding: const EdgeInsets.all(28),
+      padding: EdgeInsets.all(isMobile ? 18 : 28),
       decoration: BoxDecoration(
         gradient: AppColors.gradientPrimary,
         borderRadius: BorderRadius.circular(AppConstants.radiusLg),
@@ -229,108 +241,202 @@ class _HeroBanner extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.14),
-                            borderRadius: BorderRadius.circular(AppConstants.radiusFull),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.20),
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const _PulseDot(),
-                              const SizedBox(width: 8),
-                              Text(
-                                '$sessionName Session is live',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 18),
-                        Text(
-                          'Good evening, $name',
-                          style: AppTextStyles.h1.copyWith(
-                            color: Colors.white,
-                            fontSize: 28,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 760),
-                          child: RichText(
-                            text: TextSpan(
-                              style: AppTextStyles.bodyLg.copyWith(
-                                color: Colors.white.withValues(alpha: 0.86),
-                                height: 1.7,
-                              ),
-                              children: [
-                                const TextSpan(text: 'You have '),
-                                TextSpan(
-                                  text: '$feeDefaultersCount fee defaulters, $attendanceShortageCount attendance shortages, and $resultSheetsAwaitingCount result sheets',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w800,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                                const TextSpan(text: ' awaiting publication. Quick actions are available below.'),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
+              if (isMobile) ...[
+                // Mobile layout: Vertical Stack
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(AppConstants.radiusFull),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.20),
                     ),
                   ),
-                  const SizedBox(width: 24),
-                  Wrap(
-                    spacing: 12,
-                    runSpacing: 12,
-                    alignment: WrapAlignment.end,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      ElevatedButton.icon(
+                      const _PulseDot(),
+                      const SizedBox(width: 8),
+                      Text(
+                        '$sessionName Session is live',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  '$greeting, $name',
+                  style: AppTextStyles.h1.copyWith(
+                    color: Colors.white,
+                    fontSize: 22,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                RichText(
+                  text: TextSpan(
+                    style: AppTextStyles.body.copyWith(
+                      color: Colors.white.withValues(alpha: 0.86),
+                      height: 1.6,
+                    ),
+                    children: [
+                      const TextSpan(text: 'You have '),
+                      TextSpan(
+                        text: '$feeDefaultersCount fee defaulters, $attendanceShortageCount attendance shortages, and $resultSheetsAwaitingCount result sheets',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const TextSpan(text: ' awaiting publication. Quick actions are available below.'),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
                         onPressed: onQuickAdd,
                         icon: const Icon(Icons.add, size: 18),
                         label: const Text('Quick add'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.white,
                           foregroundColor: AppColors.primary,
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
                           ),
                         ),
                       ),
-                      OutlinedButton.icon(
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: OutlinedButton.icon(
                         onPressed: onExport,
                         icon: const Icon(Icons.download_rounded, size: 18),
                         label: const Text('Export report'),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.white,
                           side: const BorderSide(color: Colors.white24),
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
                           ),
                         ),
                       ),
-                    ],
-                  ),
-                ],
-              ),
+                    ),
+                  ],
+                ),
+              ] else ...[
+                // Desktop / Tablet layout: Horizontal Row
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.14),
+                              borderRadius: BorderRadius.circular(AppConstants.radiusFull),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.20),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const _PulseDot(),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '$sessionName Session is live',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 18),
+                          Text(
+                            '$greeting, $name',
+                            style: AppTextStyles.h1.copyWith(
+                              color: Colors.white,
+                              fontSize: 28,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 760),
+                            child: RichText(
+                              text: TextSpan(
+                                style: AppTextStyles.bodyLg.copyWith(
+                                  color: Colors.white.withValues(alpha: 0.86),
+                                  height: 1.7,
+                                ),
+                                children: [
+                                  const TextSpan(text: 'You have '),
+                                  TextSpan(
+                                    text: '$feeDefaultersCount fee defaulters, $attendanceShortageCount attendance shortages, and $resultSheetsAwaitingCount result sheets',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  const TextSpan(text: ' awaiting publication. Quick actions are available below.'),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 24),
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      alignment: WrapAlignment.end,
+                      children: [
+                        ElevatedButton.icon(
+                          onPressed: onQuickAdd,
+                          icon: const Icon(Icons.add, size: 18),
+                          label: const Text('Quick add'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: AppColors.primary,
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: onExport,
+                          icon: const Icon(Icons.download_rounded, size: 18),
+                          label: const Text('Export report'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            side: const BorderSide(color: Colors.white24),
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
               const SizedBox(height: 28),
               Wrap(
                 spacing: 12,

@@ -7,12 +7,14 @@ class BadgeChip extends StatelessWidget {
   final String label;
   final BadgeTone tone;
   final double? fontSize;
+  final Color? color;
 
   const BadgeChip({
     super.key,
     required this.label,
     this.tone = BadgeTone.muted,
     this.fontSize,
+    this.color,
   });
 
   factory BadgeChip.status(String status) {
@@ -24,7 +26,11 @@ class BadgeChip extends StatelessWidget {
       'active',
       'current',
       'paid',
-      'submitted'
+      'submitted',
+      'passed',
+      'completed',
+      'cleared',
+      'good standing'
     ].contains(lower)) {
       tone = BadgeTone.success;
     } else if ([
@@ -35,12 +41,14 @@ class BadgeChip extends StatelessWidget {
       tone = BadgeTone.muted;
     } else if ([
       'suspended',
-      'overdue'
+      'overdue',
+      'failed'
     ].contains(lower)) {
       tone = BadgeTone.danger;
     } else if ([
       'on leave',
-      'pending'
+      'pending',
+      'due'
     ].contains(lower)) {
       tone = BadgeTone.warning;
     } else {
@@ -107,58 +115,65 @@ class BadgeChip extends StatelessWidget {
   }
 
   _BadgeColors _toneColors(bool isDark) {
+    if (color != null) {
+      return _BadgeColors(
+        color!,
+        color!.withValues(alpha: isDark ? 0.2 : 0.12),
+      );
+    }
+
     switch (tone) {
       case BadgeTone.success:
         return _BadgeColors(
           AppColors.success,
-          AppColors.successSoft,
+          isDark ? AppColors.success.withValues(alpha: 0.16) : AppColors.successSoft,
         );
 
       case BadgeTone.warning:
         return _BadgeColors(
           AppColors.warning,
-          AppColors.warningSoft,
+          isDark ? AppColors.warning.withValues(alpha: 0.16) : AppColors.warningSoft,
         );
 
       case BadgeTone.danger:
         return _BadgeColors(
           AppColors.danger,
-          AppColors.dangerSoft,
+          isDark ? AppColors.danger.withValues(alpha: 0.16) : AppColors.dangerSoft,
         );
 
       case BadgeTone.primary:
         return _BadgeColors(
           AppColors.primary,
-          AppColors.primarySoft,
+          isDark ? AppColors.primary.withValues(alpha: 0.16) : AppColors.primarySoft,
         );
 
       case BadgeTone.accent:
         return _BadgeColors(
           AppColors.accent,
-          AppColors.accentSoft,
+          isDark ? AppColors.accent.withValues(alpha: 0.16) : AppColors.accentSoft,
         );
 
       case BadgeTone.purple:
         return _BadgeColors(
           AppColors.purple,
-          AppColors.purpleSoft,
+          isDark ? AppColors.purple.withValues(alpha: 0.16) : AppColors.purpleSoft,
         );
 
       case BadgeTone.pink:
         return _BadgeColors(
           AppColors.pink,
-          AppColors.pinkSoft,
+          isDark ? AppColors.pink.withValues(alpha: 0.16) : AppColors.pinkSoft,
         );
 
       case BadgeTone.info:
         return _BadgeColors(
           AppColors.info,
-          AppColors.infoSoft,
+          isDark ? AppColors.info.withValues(alpha: 0.16) : AppColors.infoSoft,
         );
 
       case BadgeTone.muted:
         return _BadgeColors(
-          AppColors.textMuted,
+          isDark ? AppColors.darkTextMuted : AppColors.textMuted,
           isDark
               ? AppColors.darkSurfaceHover
               : AppColors.surfaceHover,

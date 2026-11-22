@@ -42,3 +42,10 @@ String dioErrorMessage(
 
   return fallback;
 }
+
+/// Alias for [dioErrorMessage].
+String extractDioErrorMessage(
+  DioException e, {
+  String fallback = 'Something went wrong',
+}) =>
+    dioErrorMessage(e, fallback: fallback);

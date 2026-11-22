@@ -198,8 +198,7 @@ Widget build(BuildContext context) {
                             ),
 
                         dropdownColor:
-                            AppColors
-                                .darkSurface,
+                            isDark ? AppColors.darkSurface : AppColors.surface,
 
                         items: const [
                           DropdownMenuItem(
@@ -236,8 +235,7 @@ Widget build(BuildContext context) {
                             ),
 
                         dropdownColor:
-                            AppColors
-                                .darkSurface,
+                            isDark ? AppColors.darkSurface : AppColors.surface,
 
                         items: const [
                           DropdownMenuItem(
@@ -277,8 +275,7 @@ Widget build(BuildContext context) {
                             ),
 
                         dropdownColor:
-                            AppColors
-                                .darkSurface,
+                            isDark ? AppColors.darkSurface : AppColors.surface,
 
                         items: const [
                           DropdownMenuItem(

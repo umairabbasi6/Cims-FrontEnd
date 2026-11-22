@@ -1,7 +1,24 @@
+import 'package:cims/features/admin/enrollments/models/enrollment_model.dart';
 import 'package:cims/features/admin/enrollments/services/enrollment_service.dart';
 
 class EnrollmentRepository {
   final EnrollmentService _service = EnrollmentService();
+
+  Future<List<EnrollmentModel>> listEnrollmentsTyped({
+    int? sessionId,
+    int? stage,
+    String? status,
+    int skip = 0,
+    int limit = 150,
+  }) {
+    return _service.listEnrollmentsTyped(
+      sessionId: sessionId,
+      stage: stage,
+      status: status,
+      skip: skip,
+      limit: limit,
+    );
+  }
 
   Future<List<Map<String, dynamic>>> listEnrollments({
     int? sessionId,

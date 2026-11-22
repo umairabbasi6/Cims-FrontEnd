@@ -135,4 +135,18 @@ class FeesRepository {
   }) {
     return _service.studentDuesTotal(studentId, sessionId: sessionId);
   }
+
+  Future<Map<String, dynamic>> getSummary({int? sessionId}) {
+    return _service.getSummary(sessionId: sessionId);
+  }
+
+  Future<String> bulkGenerateFees({
+    required int programId,
+    required int sessionId,
+  }) {
+    return _service.bulkGenerateFees(
+      programId: programId,
+      sessionId: sessionId,
+    );
+  }
 }

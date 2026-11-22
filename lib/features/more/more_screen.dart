@@ -17,8 +17,7 @@ class MoreScreen extends StatelessWidget {
 
 @override
 Widget build(BuildContext context) {
-  final screenWidth = MediaQuery.of(context).size.width;
-  final bool isMobile = screenWidth < 600;
+  final bool isMobile = Responsive.isMobile(context);
 
   final role = AppSession.currentRole;
   final entries = visibleMoreHubEntries(role);
@@ -100,12 +99,6 @@ class _MoreTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-  
-    final screenWidth = MediaQuery.of(context).size.width;
-    final bool isMobile = screenWidth < 600;
-    final bool isTablet = screenWidth >= 600 && screenWidth < 1024;
-    final bool isDesktop = screenWidth >= 1024;
-
     return Material(
       color : isDark ? AppColors.darkSurface : AppColors.surface,
       borderRadius : BorderRadius.circular(16),

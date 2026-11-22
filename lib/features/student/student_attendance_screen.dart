@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:cims/core/constants/app_colors.dart';
 import 'package:cims/core/constants/app_text_styles.dart';
+import 'package:cims/core/utils/responsive.dart';
 import 'package:cims/core/widgets/app_scaffold.dart';
 import 'package:cims/core/widgets/badge_chip.dart';
 import 'package:cims/core/widgets/avatar.dart';
@@ -18,8 +19,8 @@ class StudentAttendanceScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final bool isMobile = screenWidth < 600;
+    final bool isMobile = Responsive.isMobile(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final attendanceAsync = ref.watch(studentAttendanceProvider);
 
@@ -34,16 +35,17 @@ class StudentAttendanceScreen extends ConsumerWidget {
         error: (e, st) => Center(child: Text('Error: $e')),
         data: (data) {
           if (data == null || data.subjects.isEmpty) {
+            final isDark = Theme.of(context).brightness == Brightness.dark;
             return Center(
               child: Padding(
                 padding: const EdgeInsets.all(32.0),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.calendar_today_outlined,
                       size: 48,
-                      color: AppColors.textMuted,
+                      color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                     ),
                     const SizedBox(height: 12),
                     Text('No attendance records found', style: AppTextStyles.h3),
@@ -52,7 +54,7 @@ class StudentAttendanceScreen extends ConsumerWidget {
                       'There are no attendance sessions logged for the current academic session.',
                       textAlign: TextAlign.center,
                       style: AppTextStyles.body.copyWith(
-                        color: AppColors.textMuted,
+                        color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                       ),
                     ),
                   ],
@@ -71,9 +73,9 @@ class StudentAttendanceScreen extends ConsumerWidget {
                   const SizedBox(height: 20),
                   Container(
                     decoration: BoxDecoration(
-                      color: AppColors.darkSurface,
+                      color: isDark ? AppColors.darkSurface : Colors.white,
                       borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: AppColors.darkBorder),
+                      border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
                     ),
                     child: Column(
                       children: [
@@ -129,15 +131,15 @@ class StudentAttendanceScreen extends ConsumerWidget {
                             shrinkWrap: true,
                             physics: const NeverScrollableScrollPhysics(),
                             itemCount: data.subjects.length,
-                            separatorBuilder: (_, __) => const Divider(height: 1, color: AppColors.darkBorder),
+                            separatorBuilder: (_, __) => Divider(height: 1, color: isDark ? AppColors.darkBorder : AppColors.border),
                             itemBuilder: (context, index) {
-                              return _buildAttendanceMobileCard(data.subjects[index]);
+                              return _buildAttendanceMobileCard(data.subjects[index], isDark);
                             },
                           )
                         else ...[
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                            color: AppColors.darkSurfaceAlt,
+                            color: isDark ? AppColors.darkSurfaceAlt : AppColors.surfaceAlt,
                             child: Row(
                               children: [
                                 Expanded(flex: 28, child: Text('SUBJECT', style: AppTextStyles.labelSm)),
@@ -153,8 +155,8 @@ class StudentAttendanceScreen extends ConsumerWidget {
                           ...data.subjects.map(
                             (row) => Container(
                               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                              decoration: const BoxDecoration(
-                                border: Border(top: BorderSide(color: AppColors.darkBorder)),
+                              decoration: BoxDecoration(
+                                border: Border(top: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.border)),
                               ),
                               child: Row(
                                 children: [
@@ -172,7 +174,12 @@ class StudentAttendanceScreen extends ConsumerWidget {
                                                 row.name,
                                                 style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w700),
                                               ),
-                                              Text(row.code, style: const TextStyle(color: AppColors.darkTextMuted)),
+                                              Text(
+                                                row.code,
+                                                style: TextStyle(
+                                                  color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                                                ),
+                                              ),
                                             ],
                                           ),
                                         ),
@@ -194,7 +201,7 @@ class StudentAttendanceScreen extends ConsumerWidget {
                                               minHeight: 6,
                                               value: row.percentage / 100,
                                               color: row.percentage < 75.0 ? AppColors.warning : AppColors.accent,
-                                              backgroundColor: AppColors.darkSurfaceAlt,
+                                              backgroundColor: isDark ? AppColors.darkSurfaceAlt : AppColors.surfaceAlt,
                                             ),
                                           ),
                                         ),
@@ -285,7 +292,7 @@ class StudentAttendanceScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildAttendanceMobileCard(StudentAttendanceSubjectRow row) {
+  Widget _buildAttendanceMobileCard(StudentAttendanceSubjectRow row, bool isDark) {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -305,7 +312,9 @@ class StudentAttendanceScreen extends ConsumerWidget {
                     ),
                     Text(
                       row.code,
-                      style: const TextStyle(color: AppColors.darkTextMuted),
+                      style: TextStyle(
+                        color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                      ),
                     ),
                   ],
                 ),
@@ -320,10 +329,10 @@ class StudentAttendanceScreen extends ConsumerWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildCompactMetric('HELD', '${row.held}'),
-              _buildCompactMetric('PRESENT', '${row.present}'),
-              _buildCompactMetric('ABSENT', '${row.absent}'),
-              _buildCompactMetric('LATE', '${row.late}'),
+              _buildCompactMetric('HELD', '${row.held}', isDark),
+              _buildCompactMetric('PRESENT', '${row.present}', isDark),
+              _buildCompactMetric('ABSENT', '${row.absent}', isDark),
+              _buildCompactMetric('LATE', '${row.late}', isDark),
             ],
           ),
           const SizedBox(height: 12),
@@ -336,7 +345,7 @@ class StudentAttendanceScreen extends ConsumerWidget {
                     minHeight: 6,
                     value: row.percentage / 100,
                     color: row.percentage < 75.0 ? AppColors.warning : AppColors.accent,
-                    backgroundColor: AppColors.darkSurfaceAlt,
+                    backgroundColor: isDark ? AppColors.darkSurfaceAlt : AppColors.surfaceAlt,
                   ),
                 ),
               ),
@@ -352,7 +361,7 @@ class StudentAttendanceScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildCompactMetric(String label, String value) {
+  Widget _buildCompactMetric(String label, String value, bool isDark) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -360,7 +369,7 @@ class StudentAttendanceScreen extends ConsumerWidget {
           label,
           style: AppTextStyles.caption.copyWith(
             fontSize: 10,
-            color: AppColors.darkTextMuted,
+            color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
           ),
         ),
         const SizedBox(height: 4),
@@ -409,6 +418,7 @@ class _StudentMetric extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final color = switch (tone) {
       BadgeTone.primary => AppColors.primary,
       BadgeTone.success => AppColors.success,
@@ -420,9 +430,9 @@ class _StudentMetric extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.darkSurface,
+        color: isDark ? AppColors.darkSurface : Colors.white,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.darkBorder),
+        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -435,7 +445,7 @@ class _StudentMetric extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.bodySm.copyWith(
-                    color: AppColors.darkTextMuted,
+                    color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                     fontSize: 11,
                   ),
                 ),

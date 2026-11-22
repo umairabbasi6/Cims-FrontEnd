@@ -51,8 +51,8 @@ class ResultsApiService {
           .map((e) => Map<String, dynamic>.from(e as Map))
           .toList();
     }
-    if (data is Map<String, dynamic>) {
-      final inner = data['results'] ?? data['rows'];
+    if (data is Map) {
+      final inner = data['results'] ?? data['rows'] ?? data['items'] ?? data['data'];
       if (inner is List) {
         return inner
             .map((e) => Map<String, dynamic>.from(e as Map))
@@ -78,8 +78,8 @@ class ResultsApiService {
           .map((e) => Map<String, dynamic>.from(e as Map))
           .toList();
     }
-    if (data is Map<String, dynamic>) {
-      final inner = data['results'] ?? data['items'];
+    if (data is Map) {
+      final inner = data['results'] ?? data['items'] ?? data['data'];
       if (inner is List) {
         return inner
             .map((e) => Map<String, dynamic>.from(e as Map))

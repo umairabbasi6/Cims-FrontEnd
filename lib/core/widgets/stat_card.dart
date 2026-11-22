@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:cims/core/constants/app_colors.dart';
 import 'package:cims/core/constants/app_constants.dart';
 import 'package:cims/core/constants/app_text_styles.dart';
+import 'package:cims/core/utils/responsive.dart';
 
 class StatCard extends StatefulWidget {
   final String label;
@@ -10,7 +11,8 @@ class StatCard extends StatefulWidget {
   final String? trend;
   final bool trendUp;
   final StatTone tone;
-  final Widget? icon;
+  final dynamic icon;
+  final Color? color;
 
   const StatCard({
     super.key,
@@ -20,6 +22,7 @@ class StatCard extends StatefulWidget {
     this.trendUp = true,
     this.tone = StatTone.primary,
     this.icon,
+    this.color,
   });
 
   @override
@@ -31,16 +34,15 @@ class _StatCardState extends State<StatCard> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = _toneColors();
-
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = _toneColors(isDark);
 
     return MouseRegion(
       onEnter: (_) => setState(() => hovered = true),
       onExit: (_) => setState(() => hovered = false),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        padding: EdgeInsets.all(MediaQuery.of(context).size.width < 600 ? 12 : 20),
+        padding: EdgeInsets.all(Responsive.isMobile(context) ? 12 : 20),
         transform: Matrix4.translationValues(
           0,
           hovered ? -3 : 0,
@@ -97,13 +99,19 @@ class _StatCardState extends State<StatCard> {
                       ),
                     ),
                     child: Center(
-                      child: IconTheme(
-                        data: IconThemeData(
-                          color: colors.foreground,
-                          size: 18,
-                        ),
-                        child: widget.icon!,
-                      ),
+                      child: widget.icon is IconData
+                          ? Icon(
+                              widget.icon as IconData,
+                              size: 18,
+                              color: colors.foreground,
+                            )
+                          : IconTheme(
+                              data: IconThemeData(
+                                color: colors.foreground,
+                                size: 18,
+                              ),
+                              child: widget.icon is Widget ? (widget.icon as Widget) : const SizedBox.shrink(),
+                            ),
                     ),
                   ),
               ],
@@ -127,7 +135,9 @@ class _StatCardState extends State<StatCard> {
                   vertical: 5,
                 ),
                 decoration: BoxDecoration(
-                  color: widget.trendUp ? AppColors.successSoft : AppColors.dangerSoft,
+                  color: widget.trendUp
+                      ? (isDark ? AppColors.success.withValues(alpha: 0.16) : AppColors.successSoft)
+                      : (isDark ? AppColors.danger.withValues(alpha: 0.16) : AppColors.dangerSoft),
                   borderRadius: BorderRadius.circular(
                     AppConstants.radiusFull,
                   ),
@@ -167,42 +177,49 @@ class _StatCardState extends State<StatCard> {
     );
   }
 
-  _StatColors _toneColors() {
+  _StatColors _toneColors(bool isDark) {
+    if (widget.color != null) {
+      return _StatColors(
+        widget.color!,
+        widget.color!.withValues(alpha: isDark ? 0.2 : 0.12),
+      );
+    }
+
     switch (widget.tone) {
       case StatTone.primary:
         return _StatColors(
           AppColors.primary,
-          AppColors.primarySoft,
+          isDark ? AppColors.primary.withValues(alpha: 0.16) : AppColors.primarySoft,
         );
 
       case StatTone.success:
         return _StatColors(
           AppColors.success,
-          AppColors.successSoft,
+          isDark ? AppColors.success.withValues(alpha: 0.16) : AppColors.successSoft,
         );
 
       case StatTone.warning:
         return _StatColors(
           AppColors.warning,
-          AppColors.warningSoft,
+          isDark ? AppColors.warning.withValues(alpha: 0.16) : AppColors.warningSoft,
         );
 
       case StatTone.danger:
         return _StatColors(
           AppColors.danger,
-          AppColors.dangerSoft,
+          isDark ? AppColors.danger.withValues(alpha: 0.16) : AppColors.dangerSoft,
         );
 
       case StatTone.accent:
         return _StatColors(
           AppColors.accent,
-          AppColors.accentSoft,
+          isDark ? AppColors.accent.withValues(alpha: 0.16) : AppColors.accentSoft,
         );
 
       case StatTone.purple:
         return _StatColors(
           AppColors.purple,
-          AppColors.purpleSoft,
+          isDark ? AppColors.purple.withValues(alpha: 0.16) : AppColors.purpleSoft,
         );
     }
   }

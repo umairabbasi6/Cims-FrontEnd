@@ -1,16 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
-import 'package:cims/features/auth/providers/auth_provider.dart';
-import 'package:cims/features/admin/sessions/providers/session_provider.dart';
-import 'package:cims/features/admin/students/providers/student_provider.dart';
-import 'package:cims/features/admin/subjects/providers/subject_provider.dart';
-import 'package:cims/core/network/app_router.dart';
 import 'package:cims/core/constants/app_colors.dart';
 import 'package:cims/core/constants/app_constants.dart';
 import 'package:cims/core/constants/app_text_styles.dart';
-import 'package:cims/core/constants/role_profile.dart';
 import 'package:cims/core/theme/theme_mode_provider.dart';
 import 'package:cims/core/utils/responsive.dart';
 import 'package:cims/core/widgets/topbar_user_menu.dart';

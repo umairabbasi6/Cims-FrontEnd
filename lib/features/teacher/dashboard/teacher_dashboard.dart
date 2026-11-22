@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cims/core/constants/app_colors.dart';
+import 'package:cims/core/constants/app_constants.dart';
 import 'package:cims/core/constants/app_text_styles.dart';
 import 'package:cims/core/widgets/app_scaffold.dart';
 import 'package:cims/core/widgets/badge_chip.dart';
+import 'package:cims/core/widgets/stat_card.dart';
 import 'package:cims/features/teacher/dashboard/providers/teacher_dashboard_provider.dart';
+import 'package:cims/features/teacher/dashboard/widgets/teacher_checkin_card.dart';
 import 'package:cims/core/utils/responsive.dart';
 import 'package:intl/intl.dart';
 
@@ -58,7 +61,11 @@ class TeacherDashboard extends ConsumerWidget {
                 _TeacherHero(data: data, onNavigate: onNavigate),
                 const SizedBox(height: 20),
 
-                // 2. STATS GRID
+                // 2. DAILY CHECK-IN & LEAVE CARD
+                const TeacherCheckInCard(),
+                const SizedBox(height: 20),
+
+                // 3. STATS GRID
                 _TeacherStats(data: data),
                 const SizedBox(height: 20),
 
@@ -143,7 +150,7 @@ class _TeacherHero extends StatelessWidget {
                   data.totalSubjects > 0
                       ? 'Your next class is ${data.nextClassSubject} at ${data.nextClassTime} in ${data.nextClassRoom}. ${data.attendancePendingCount} attendance session is pending submission.'
                       : 'You do not have any subjects assigned in the current session.',
-                  style: TextStyle(
+                  style: AppTextStyles.body.copyWith(
                     color: Colors.white.withValues(alpha: 0.9),
                     fontSize: 13.5,
                     height: 1.5,
@@ -157,8 +164,8 @@ class _TeacherHero extends StatelessWidget {
                         onPressed: () => onNavigate('/attendance'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.white,
-                          foregroundColor: const Color(0xFF6366F1),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          foregroundColor: AppColors.primary,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.radius)),
                         ),
                         child: const Text('Mark attendance'),
                       ),
@@ -196,7 +203,7 @@ class _TeacherHero extends StatelessWidget {
                         data.totalSubjects > 0
                             ? 'Your next class is ${data.nextClassSubject} at ${data.nextClassTime} in ${data.nextClassRoom}. ${data.attendancePendingCount} attendance session is pending submission.'
                             : 'You do not have any subjects assigned in the current session.',
-                        style: TextStyle(
+                        style: AppTextStyles.body.copyWith(
                           color: Colors.white.withValues(alpha: 0.9),
                           fontSize: 14,
                           height: 1.5,
@@ -214,9 +221,9 @@ class _TeacherHero extends StatelessWidget {
                       label: const Text('Mark attendance'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.white,
-                        foregroundColor: const Color(0xFF6366F1),
+                        foregroundColor: AppColors.primary,
                         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.radiusMd)),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -274,45 +281,47 @@ class _TeacherStats extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
-    final isMobile = width < 600;
-    final isTablet = width >= 600 && width < 1100;
+    final isMobile = Responsive.isMobile(context);
+    final isTablet = Responsive.isTablet(context);
 
-    // Calculate total students assigned (dynamic mock matching subjects count)
+    // Calculate real total students assigned across teacher's classes
     int totalStudentsCount = 0;
     for (var c in data.assignedClassesList) {
       totalStudentsCount += (c['students'] as num).toInt();
     }
-    if (totalStudentsCount == 0) totalStudentsCount = 115;
 
     final stats = [
-      (
-        'Assigned Classes',
-        '${data.totalSubjects}',
-        '$totalStudentsCount students',
-        Icons.business_outlined,
-        const Color(0xFF6366F1)
+      StatCard(
+        label: 'Assigned Classes',
+        value: '${data.totalSubjects}',
+        trend: '$totalStudentsCount students',
+        trendUp: true,
+        icon: Icons.business_outlined,
+        tone: StatTone.primary,
       ),
-      (
-        'Today\'s Sessions',
-        '${data.todayClasses}',
-        data.todayClasses > 0 ? 'Next at ${data.nextClassTime}' : 'No sessions today',
-        Icons.calendar_today_rounded,
-        const Color(0xFF14B8A6)
+      StatCard(
+        label: 'Today\'s Sessions',
+        value: '${data.todayClasses}',
+        trend: data.todayClasses > 0 ? 'Next at ${data.nextClassTime}' : 'No sessions today',
+        trendUp: data.todayClasses > 0,
+        icon: Icons.calendar_today_rounded,
+        tone: StatTone.accent,
       ),
-      (
-        'Attendance Pending',
-        '${data.attendancePendingCount}',
-        data.assignedClassesList.isNotEmpty ? data.assignedClassesList[0]['className'].toString() : 'No classes',
-        Icons.check_box_outlined,
-        const Color(0xFFF59E0B)
+      StatCard(
+        label: 'Attendance Pending',
+        value: '${data.attendancePendingCount}',
+        trend: data.assignedClassesList.isNotEmpty ? data.assignedClassesList[0]['className'].toString() : 'No classes',
+        trendUp: data.attendancePendingCount == 0,
+        icon: Icons.check_box_outlined,
+        tone: data.attendancePendingCount > 0 ? StatTone.warning : StatTone.success,
       ),
-      (
-        'Marks Pending',
-        '${data.marksPendingCount}',
-        'Mid-term entries',
-        Icons.assignment_outlined,
-        const Color(0xFF10B981)
+      StatCard(
+        label: 'Marks Pending',
+        value: '${data.marksPendingCount}',
+        trend: 'Mid-term entries',
+        trendUp: data.marksPendingCount == 0,
+        icon: Icons.assignment_outlined,
+        tone: data.marksPendingCount > 0 ? StatTone.warning : StatTone.success,
       ),
     ];
 
@@ -320,7 +329,7 @@ class _TeacherStats extends StatelessWidget {
       return Column(
         children: stats.map((s) => Padding(
           padding: const EdgeInsets.only(bottom: 12),
-          child: _StatCard(title: s.$1, value: s.$2, subtitle: s.$3, icon: s.$4, color: s.$5),
+          child: s,
         )).toList(),
       );
     }
@@ -336,83 +345,8 @@ class _TeacherStats extends StatelessWidget {
         childAspectRatio: isTablet ? 2.0 : 1.35,
       ),
       itemBuilder: (context, index) {
-        final s = stats[index];
-        return _StatCard(title: s.$1, value: s.$2, subtitle: s.$3, icon: s.$4, color: s.$5);
+        return stats[index];
       },
-    );
-  }
-}
-
-class _StatCard extends StatelessWidget {
-  final String title;
-  final String value;
-  final String subtitle;
-  final IconData icon;
-  final Color color;
-
-  const _StatCard({
-    required this.title,
-    required this.value,
-    required this.subtitle,
-    required this.icon,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.darkSurface : AppColors.surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                title,
-                style: TextStyle(
-                  color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(icon, color: color, size: 18),
-              ),
-            ],
-          ),
-          const Spacer(),
-          Text(value, style: AppTextStyles.h1.copyWith(fontSize: 28)),
-          const SizedBox(height: 4),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Text(
-              subtitle,
-              style: TextStyle(
-                color: color,
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -434,7 +368,7 @@ class _TodaySchedule extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkSurface : AppColors.surface,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(AppConstants.radiusLg),
         border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
       ),
       child: Column(
@@ -450,7 +384,7 @@ class _TodaySchedule extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     todayStr,
-                    style: TextStyle(
+                    style: AppTextStyles.caption.copyWith(
                       color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                       fontSize: 12,
                     ),
@@ -475,7 +409,9 @@ class _TodaySchedule extends StatelessWidget {
               child: Center(
                 child: Text(
                   'No classes scheduled for today.',
-                  style: TextStyle(color: isDark ? AppColors.darkTextMuted : AppColors.textMuted),
+                  style: AppTextStyles.bodySm.copyWith(
+                    color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                  ),
                 ),
               ),
             )
@@ -544,7 +480,7 @@ class _TodaySchedule extends StatelessWidget {
                           const SizedBox(height: 4),
                           Text(
                             '${s['time']} · $roomName · $classLabel',
-                            style: TextStyle(
+                            style: AppTextStyles.caption.copyWith(
                               color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                               fontSize: 12,
                             ),
@@ -579,7 +515,7 @@ class _AttendanceTrendChart extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkSurface : AppColors.surface,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(AppConstants.radiusLg),
         border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
       ),
       child: Column(
@@ -589,7 +525,7 @@ class _AttendanceTrendChart extends StatelessWidget {
           const SizedBox(height: 2),
           Text(
             'This week',
-            style: TextStyle(
+            style: AppTextStyles.caption.copyWith(
               color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
               fontSize: 12,
             ),
@@ -608,14 +544,14 @@ class _AttendanceTrendChart extends StatelessWidget {
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: const [
-              Text('Mon', style: TextStyle(fontSize: 11, color: AppColors.darkTextMuted)),
-              Text('Tue', style: TextStyle(fontSize: 11, color: AppColors.darkTextMuted)),
-              Text('Wed', style: TextStyle(fontSize: 11, color: AppColors.darkTextMuted)),
-              Text('Thu', style: TextStyle(fontSize: 11, color: AppColors.darkTextMuted)),
-              Text('Fri', style: TextStyle(fontSize: 11, color: AppColors.darkTextMuted)),
-              Text('Sat', style: TextStyle(fontSize: 11, color: AppColors.darkTextMuted)),
-              Text('Sun', style: TextStyle(fontSize: 11, color: AppColors.darkTextMuted)),
+            children: [
+              Text('Mon', style: AppTextStyles.caption.copyWith(fontSize: 11, color: isDark ? AppColors.darkTextMuted : AppColors.textMuted)),
+              Text('Tue', style: AppTextStyles.caption.copyWith(fontSize: 11, color: isDark ? AppColors.darkTextMuted : AppColors.textMuted)),
+              Text('Wed', style: AppTextStyles.caption.copyWith(fontSize: 11, color: isDark ? AppColors.darkTextMuted : AppColors.textMuted)),
+              Text('Thu', style: AppTextStyles.caption.copyWith(fontSize: 11, color: isDark ? AppColors.darkTextMuted : AppColors.textMuted)),
+              Text('Fri', style: AppTextStyles.caption.copyWith(fontSize: 11, color: isDark ? AppColors.darkTextMuted : AppColors.textMuted)),
+              Text('Sat', style: AppTextStyles.caption.copyWith(fontSize: 11, color: isDark ? AppColors.darkTextMuted : AppColors.textMuted)),
+              Text('Sun', style: AppTextStyles.caption.copyWith(fontSize: 11, color: isDark ? AppColors.darkTextMuted : AppColors.textMuted)),
             ],
           ),
         ],
@@ -633,7 +569,7 @@ class AttendanceChartPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = const Color(0xFF6366F1)
+      ..color = AppColors.primary
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3
       ..strokeCap = StrokeCap.round;
@@ -679,8 +615,8 @@ class AttendanceChartPainter extends CustomPainter {
       begin: Alignment.topCenter,
       end: Alignment.bottomCenter,
       colors: [
-        const Color(0xFF6366F1).withValues(alpha: 0.35),
-        const Color(0xFF6366F1).withValues(alpha: 0.0),
+        AppColors.primary.withValues(alpha: 0.35),
+        AppColors.primary.withValues(alpha: 0.0),
       ],
     );
     fillPaint.shader = gradient.createShader(Rect.fromLTWH(0, 0, size.width, size.height));
@@ -692,7 +628,7 @@ class AttendanceChartPainter extends CustomPainter {
       ..color = Colors.white
       ..style = PaintingStyle.fill;
     final borderPaint = Paint()
-      ..color = const Color(0xFF6366F1)
+      ..color = AppColors.primary
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.5;
 
@@ -740,7 +676,12 @@ class _AssignedClassesTable extends StatelessWidget {
                   children: [
                     Text('Assigned Classes', style: AppTextStyles.h2),
                     const SizedBox(height: 4),
-                    const Text('Spring 2026', style: TextStyle(color: AppColors.darkTextMuted)),
+                    Text(
+                      'Spring 2026',
+                      style: TextStyle(
+                        color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                      ),
+                    ),
                   ],
                 ),
                 ElevatedButton.icon(
@@ -835,7 +776,10 @@ class _AssignedClassesTable extends StatelessWidget {
                             ),
                             Text(
                               c['code'],
-                              style: const TextStyle(fontSize: 12, color: AppColors.darkTextMuted),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                              ),
                             ),
                           ],
                         ),
@@ -876,7 +820,7 @@ class _AssignedClassesTable extends StatelessWidget {
                             minHeight: 6,
                             backgroundColor: isDark ? AppColors.darkBorder : AppColors.border,
                             valueColor: AlwaysStoppedAnimation<Color>(
-                              att >= 80 ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
+                              att >= 80 ? AppColors.success : AppColors.warning,
                             ),
                           ),
                         ),
@@ -943,7 +887,10 @@ class _AssignedClassesTable extends StatelessWidget {
                     ),
                     Text(
                       '${c['code']} · ${c['className']}',
-                      style: const TextStyle(fontSize: 12, color: AppColors.darkTextMuted),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                      ),
                     ),
                   ],
                 ),
@@ -961,7 +908,13 @@ class _AssignedClassesTable extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('NEXT SESSION', style: TextStyle(fontSize: 10, color: AppColors.darkTextMuted)),
+                  Text(
+                    'NEXT SESSION',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                    ),
+                  ),
                   const SizedBox(height: 2),
                   Text(c['nextSession'], style: const TextStyle(fontSize: 12)),
                 ],
@@ -969,7 +922,13 @@ class _AssignedClassesTable extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  const Text('STUDENTS', style: TextStyle(fontSize: 10, color: AppColors.darkTextMuted)),
+                  Text(
+                    'STUDENTS',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                    ),
+                  ),
                   const SizedBox(height: 2),
                   Text('${c['students']}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                 ],
@@ -979,7 +938,13 @@ class _AssignedClassesTable extends StatelessWidget {
           const SizedBox(height: 12),
           Row(
             children: [
-              const Text('ATTENDANCE  ', style: TextStyle(fontSize: 10, color: AppColors.darkTextMuted)),
+              Text(
+                'ATTENDANCE  ',
+                style: TextStyle(
+                  fontSize: 10,
+                  color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                ),
+              ),
               Expanded(
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(10),
@@ -988,7 +953,7 @@ class _AssignedClassesTable extends StatelessWidget {
                     minHeight: 5,
                     backgroundColor: isDark ? AppColors.darkBorder : AppColors.border,
                     valueColor: AlwaysStoppedAnimation<Color>(
-                      att >= 80 ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
+                      att >= 80 ? AppColors.success : AppColors.warning,
                     ),
                   ),
                 ),

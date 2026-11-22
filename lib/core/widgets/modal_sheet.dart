@@ -335,13 +335,17 @@ class CimsFormField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Column(
       crossAxisAlignment:
           CrossAxisAlignment.start,
 
       children: [
-        Text(label.toUpperCase(),
-          style: AppTextStyles.label,
+        Text(
+          label.toUpperCase(),
+          style: AppTextStyles.label.copyWith(
+            color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+          ),
         ),
 
         const SizedBox(height: 8),
@@ -388,13 +392,17 @@ class CimsDropdownField<T>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Column(
       crossAxisAlignment:
           CrossAxisAlignment.start,
 
       children: [
-        Text(label.toUpperCase(),
-          style: AppTextStyles.label,
+        Text(
+          label.toUpperCase(),
+          style: AppTextStyles.label.copyWith(
+            color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+          ),
         ),
 
         const SizedBox(height: 8),
@@ -402,12 +410,17 @@ class CimsDropdownField<T>
         DropdownButtonFormField<T>(
           initialValue: value,
           isExpanded: true,
-
+          dropdownColor: isDark ? AppColors.darkSurfaceAlt : AppColors.surface,
           items: items
               .map(
                 (e) => DropdownMenuItem<T>(
                   value: e,
-                  child: Text(itemLabel(e)),
+                  child: Text(
+                    itemLabel(e),
+                    style: TextStyle(
+                      color: isDark ? AppColors.darkText : AppColors.text,
+                    ),
+                  ),
                 ),
               )
               .toList(),
@@ -441,13 +454,17 @@ class CimsDateField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Column(
       crossAxisAlignment:
           CrossAxisAlignment.start,
 
       children: [
-        Text(label.toUpperCase(),
-          style: AppTextStyles.label,
+        Text(
+          label.toUpperCase(),
+          style: AppTextStyles.label.copyWith(
+            color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+          ),
         ),
 
         const SizedBox(height: 8),

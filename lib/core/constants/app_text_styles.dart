@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:cims/core/constants/app_colors.dart';
 
 class AppTextStyles {
   AppTextStyles._();
@@ -34,15 +33,15 @@ class AppTextStyles {
   // ── Label ──────────────────────────────────────────
   static TextStyle labelLg = GoogleFonts.inter(
     fontSize: 13, fontWeight: FontWeight.w700,
-    letterSpacing: 0.04, color: AppColors.textSecondary,
+    letterSpacing: 0.04,
   );
   static TextStyle label = GoogleFonts.inter(
     fontSize: 12, fontWeight: FontWeight.w700,
-    letterSpacing: 0.04, color: AppColors.textSecondary,
+    letterSpacing: 0.04,
   );
   static TextStyle labelSm = GoogleFonts.inter(
     fontSize: 11, fontWeight: FontWeight.w700,
-    letterSpacing: 0.08, color: AppColors.textMuted,
+    letterSpacing: 0.08,
   );
 
   // ── Stat ───────────────────────────────────────────

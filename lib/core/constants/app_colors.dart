@@ -16,6 +16,7 @@ class AppColors {
   static const successSoft = Color(0xFFE8F7EF);
 
   static const warning     = Color(0xFFF59E0B);
+  static const warningDark = Color(0xFF783C00);
   static const warningSoft = Color(0xFFFFF4DF);
 
   static const danger      = Color(0xFFDC3545);
@@ -40,11 +41,11 @@ class AppColors {
 
   static const text          = Color(0xFF0F172A);
   static const textSecondary = Color(0xFF475569);
-  static const textMuted     = Color(0xFF94A3B8);
+  static const textMuted     = Color(0xFF64748B);
 
   static const sidebarBg    = Color(0xFFFFFFFF);
   static const sidebarFg    = Color(0xFF334155);
-  static const sidebarMuted = Color(0xFF94A3B8);
+  static const sidebarMuted = Color(0xFF64748B);
 
   // ── Dark Surface ───────────────────────────────────
   static const darkBg           = Color(0xFF06080F);
@@ -56,11 +57,19 @@ class AppColors {
 
   static const darkText          = Color(0xFFF1F5F9);
   static const darkTextSecondary = Color(0xFFCBD5E1);
-  static const darkTextMuted     = Color(0xFF64748B);
+  static const darkTextMuted     = Color(0xFF94A3B8);
 
   static const darkSidebarBg    = Color(0xFF0A1020);
   static const darkSidebarFg    = Color(0xFFCBD5E1);
-  static const darkSidebarMuted = Color(0xFF64748B);
+  static const darkSidebarMuted = Color(0xFF94A3B8);
+
+  // ── Aliases ────────────────────────────────────────
+  static const darkCardBg  = darkSurface;
+  static const darkInputBg = darkSurfaceAlt;
+  static const inputBg     = surfaceAlt;
+  static const slate       = textMuted;
+  static const error       = danger;
+  static const errorSoft   = dangerSoft;
 
   // ── Gradients ──────────────────────────────────────
   static const gradientPrimary = LinearGradient(

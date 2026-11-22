@@ -1,9 +1,27 @@
 import 'package:dio/dio.dart';
 
 import 'package:cims/core/network/dio_client.dart';
+import 'package:cims/features/admin/enrollments/models/enrollment_model.dart';
 
 class EnrollmentService {
   final Dio _dio = DioClient.dio;
+
+  Future<List<EnrollmentModel>> listEnrollmentsTyped({
+    int? sessionId,
+    int? stage,
+    String? status,
+    int skip = 0,
+    int limit = 150,
+  }) async {
+    final list = await listEnrollments(
+      sessionId: sessionId,
+      stage: stage,
+      status: status,
+      skip: skip,
+      limit: limit,
+    );
+    return list.map((e) => EnrollmentModel.fromJson(e)).toList();
+  }
 
   Future<List<Map<String, dynamic>>> listEnrollments({
     int? sessionId,
@@ -122,8 +140,8 @@ class EnrollmentService {
           .map((e) => Map<String, dynamic>.from(e as Map))
           .toList();
     }
-    if (data is Map<String, dynamic>) {
-      final inner = data['enrollments'] ?? data['items'];
+    if (data is Map) {
+      final inner = data['enrollments'] ?? data['items'] ?? data['data'];
       if (inner is List) {
         return inner
             .map((e) => Map<String, dynamic>.from(e as Map))

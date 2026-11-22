@@ -1,5 +1,3 @@
-import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,6 +14,7 @@ import 'package:cims/core/utils/responsive.dart';
 import 'package:cims/features/admin/staff/models/staff_api_model.dart';
 import 'package:cims/features/admin/staff/providers/staff_provider.dart';
 import 'package:cims/features/teacher/attendance/providers/attendance_api_provider.dart';
+import 'package:cims/features/admin/staff/admin_leaves_modal.dart';
 import 'package:printing/printing.dart';
 import 'package:cims/core/utils/csv_export_helper.dart' as csv_helper;
 
@@ -433,6 +432,12 @@ class _StaffScreenState
       label: const Text('Add Staff'),
     );
 
+    final leavesBtn = OutlinedButton.icon(
+      onPressed: () => AdminLeavesModal.show(context),
+      icon: const Icon(Icons.approval_rounded, size: 18),
+      label: const Text('Leave Requests'),
+    );
+
     Widget toolbar;
     if (Responsive.isMobile(context)) {
       toolbar = Column(
@@ -451,15 +456,25 @@ class _StaffScreenState
             child: filters,
           ),
           const SizedBox(height: 12),
+          if (!showAttendancePanel) ...[
+            addBtn,
+            const SizedBox(height: 12),
+          ],
           Row(
             children: [
               if (showAttendancePanel) ...[
                 Expanded(child: exportCsvBtn),
-                const SizedBox(width: 12),
+                const SizedBox(width: 8),
                 Expanded(child: exportPdfBtn),
-                const SizedBox(width: 12),
+                const SizedBox(width: 8),
               ],
               Expanded(child: attendanceToggleBtn),
+              const SizedBox(width: 8),
+              IconButton.outlined(
+                tooltip: 'Leave Requests',
+                icon: const Icon(Icons.approval_rounded),
+                onPressed: () => AdminLeavesModal.show(context),
+              ),
             ],
           ),
         ],
@@ -492,6 +507,8 @@ class _StaffScreenState
                 const SizedBox(width: 12),
               ],
               attendanceToggleBtn,
+              const SizedBox(width: 12),
+              leavesBtn,
             ],
           ),
         ],
@@ -516,6 +533,8 @@ class _StaffScreenState
             const SizedBox(width: 12),
           ],
           attendanceToggleBtn,
+          const SizedBox(width: 12),
+          leavesBtn,
           if (!showAttendancePanel) ...[
             const SizedBox(width: 12),
             addBtn,
@@ -530,6 +549,25 @@ class _StaffScreenState
       currentRoute: '/staff',
       role: AppSession.currentRole,
       onNavigate: widget.onNavigate,
+      floatingActionButton: Responsive.isMobile(context) && !showAttendancePanel
+          ? FloatingActionButton.extended(
+              onPressed: () async {
+                final created = await showResponsiveModal<bool>(
+                  context: context,
+                  barrierColor: Colors.black54,
+                  child: const AddStaffModal(),
+                );
+                if (created == true) {
+                  ref.invalidate(staffListProvider(_apiCategoryForTab(selectedTab)));
+                  ref.invalidate(staffListProvider(null));
+                  ref.invalidate(allStaffListProvider(_apiCategoryForTab(selectedTab)));
+                  ref.invalidate(allStaffListProvider(null));
+                }
+              },
+              icon: const Icon(Icons.person_add_rounded),
+              label: const Text('Add Staff'),
+            )
+          : null,
       body: Column(
         crossAxisAlignment:
             CrossAxisAlignment.start,
@@ -980,15 +1018,15 @@ class _StaffScreenState
     switch (status.toUpperCase()) {
       case 'PRESENT':
         foreground = AppColors.success;
-        background = AppColors.successSoft;
+        background = isDark ? foreground.withValues(alpha: 0.16) : AppColors.successSoft;
         break;
       case 'LATE':
         foreground = AppColors.warning;
-        background = AppColors.warningSoft;
+        background = isDark ? foreground.withValues(alpha: 0.16) : AppColors.warningSoft;
         break;
       case 'ABSENT':
         foreground = AppColors.danger;
-        background = AppColors.dangerSoft;
+        background = isDark ? foreground.withValues(alpha: 0.16) : AppColors.dangerSoft;
         break;
       case 'ON_LEAVE':
         foreground = isDark ? AppColors.darkTextMuted : AppColors.textMuted;
@@ -996,7 +1034,7 @@ class _StaffScreenState
         break;
       case 'EXCUSED':
         foreground = AppColors.purple;
-        background = AppColors.purpleSoft;
+        background = isDark ? foreground.withValues(alpha: 0.16) : AppColors.purpleSoft;
         break;
       case 'NOT_CHECKED_IN':
       default:
