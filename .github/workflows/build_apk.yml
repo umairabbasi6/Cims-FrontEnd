@@ -48,9 +48,6 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Run Build Runner (Code Generation)
-        run: dart run build_runner build --delete-conflicting-outputs
-
       - name: Build Release APK
         run: flutter build apk --release --dart-define=API_BASE_URL="https://cims-backend-gj9r.onrender.com/api"
 
